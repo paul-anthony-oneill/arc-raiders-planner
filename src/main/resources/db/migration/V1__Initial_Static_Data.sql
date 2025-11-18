@@ -53,3 +53,8 @@ INSERT INTO area_loot_type (area_id, loot_type_id) VALUES
 (10, 4),
 (11, 10),
 (11, 6);
+
+-- 5. RESET SEQUENCES
+SELECT setval(pg_get_serial_sequence('loot_types', 'id'), (SELECT MAX(id) FROM loot_types));
+SELECT setval(pg_get_serial_sequence('maps', 'id'), (SELECT MAX(id) FROM maps));
+SELECT setval(pg_get_serial_sequence('areas', 'id'), (SELECT MAX(id) FROM areas));
