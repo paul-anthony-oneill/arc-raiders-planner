@@ -3,6 +3,9 @@ package com.pauloneill.arcraidersplanner.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Data
 @Entity
 @Table(name = "areas")
@@ -15,9 +18,13 @@ public class Area {
     @Column(nullable = false)
     private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "loot_area_id", nullable = false)
-    private LootArea lootArea;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "area_loot_type",
+            joinColumns = @JoinColumn(name = "area_id"),
+            inverseJoinColumns = @JoinColumn(name = "loot_type_id")
+    )
+    private Set<LootType> lootTypes = new HashSet<>();
 
     @ManyToOne
     @JoinColumn(name = "map_id", nullable = false)

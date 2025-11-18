@@ -26,8 +26,8 @@ public class Item {
 
     // Mechanical, Industrial etc
     @ManyToOne
-    @JoinColumn(name = "loot_area_id")
-    private LootArea lootArea;
+    @JoinColumn(name = "loot_type_id")
+    private LootType lootType;
 
     private String iconUrl;
     private Integer value;

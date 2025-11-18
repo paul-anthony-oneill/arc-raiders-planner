@@ -2,7 +2,7 @@ package com.pauloneill.arcraidersplanner.service;
 
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDto;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeResponse;
-import com.pauloneill.arcraidersplanner.model.LootArea;
+import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.model.Item;
 import com.pauloneill.arcraidersplanner.repository.LootAreaRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
@@ -54,12 +54,12 @@ public class MetaforgeSyncService {
             // PROCESS
             for (MetaforgeItemDto dto : externalItems) {
                 String areaName = dto.lootAreaName();
-                LootArea lootArea = null;
+                LootType lootType = null;
 
                 if (areaName != null && !areaName.isBlank()) {
-                    lootArea = lootAreaRepository.findByName(areaName)
+                    lootType = lootAreaRepository.findByName(areaName)
                             .orElseGet(() -> {
-                                LootArea newArea = new LootArea();
+                                LootType newArea = new LootType();
                                 newArea.setName(areaName);
                                 return lootAreaRepository.save(newArea);
                             });
@@ -67,7 +67,7 @@ public class MetaforgeSyncService {
 
                 // Create/Update the Item Entity
                 Optional<Item> existingItem = itemRepository.findByName(dto.name());
-                Item itemToSave = getItemToSave(dto, existingItem, lootArea);
+                Item itemToSave = getItemToSave(dto, existingItem, lootType);
 
                 itemRepository.save(itemToSave);
                 totalItemsSynced++;
@@ -80,7 +80,7 @@ public class MetaforgeSyncService {
         System.out.println("Successfully synced " + totalItemsSynced + " items across " + totalPages + " pages.");
     }
 
-    private Item getItemToSave(MetaforgeItemDto dto, Optional<Item> existingItem, LootArea lootArea) {
+    private Item getItemToSave(MetaforgeItemDto dto, Optional<Item> existingItem, LootType lootType) {
         Item itemToSave = existingItem.orElse(new Item());
 
         itemToSave.setName(dto.name());
@@ -89,7 +89,7 @@ public class MetaforgeSyncService {
         itemToSave.setItemType(dto.itemType());
         itemToSave.setIconUrl(dto.icon());
         itemToSave.setValue(dto.value());
-        itemToSave.setLootArea(lootArea);
+        itemToSave.setLootType(lootType);
 
         if (dto.stats() != null) {
             itemToSave.setWeight(dto.stats().weight());
