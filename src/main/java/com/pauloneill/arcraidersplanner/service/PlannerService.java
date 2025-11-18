@@ -36,6 +36,6 @@ public class PlannerService {
 
         String requiredLootArea = item.getLootType().getName();
 
-        return gameMapRepository.findMapsByLootAreaCount(requiredLootArea);
+        return gameMapRepository.findMapsByLootTypeCount(requiredLootArea);
     }
 }

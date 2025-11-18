@@ -28,5 +28,5 @@ public interface GameMapRepository extends JpaRepository<GameMap, Long> {
             @Param("lootTypeName") String lootTypeName
     );
 
-    Optional<GameMap> findByName(String name); // <--- ADD THIS
+    Optional<GameMap> findByName(String name);
 }
