@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: arc-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=arc_planner
+      - POSTGRES_USER=arc_user
+      - POSTGRES_PASSWORD=secret_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
