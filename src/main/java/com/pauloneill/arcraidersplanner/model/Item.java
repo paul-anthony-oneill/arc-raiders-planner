@@ -15,6 +15,9 @@ public class Item {
     @Column(nullable = false)
     private String name;
 
+    @Column(length = 1000)
+    private String description;
+
     private String rarity;
 
     // Consumable, Nature, Advanced Material, Weapon etc
@@ -23,6 +26,11 @@ public class Item {
 
     // Mechanical, Industrial etc
     @ManyToOne
-    @JoinColumn(name = "loot_area_id", nullable = false)
+    @JoinColumn(name = "loot_area_id")
     private LootArea lootArea;
+
+    private String iconUrl;
+    private Integer value;
+    private Double weight;
+    private Integer stackSize;
 }

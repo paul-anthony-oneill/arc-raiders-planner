@@ -29,35 +29,72 @@ public class MetaforgeSyncService {
 
     @Transactional
     public void syncItems() {
-        // FETCH from API
-        var response = restClient.get()
-                .uri("/items")
-                .retrieve()
-                .body(new ParameterizedTypeReference<MetaforgeResponse<MetaforgeItemDto>>() {}); // <--- CHANGED
-        if (response == null || response.data() == null) return;
+        int currentPage = 1;
+        int totalPages = 1;
+        int totalItemsSynced = 0;
 
-        List<MetaforgeItemDto> externalItems = response.data();
+        do {
+            String uri = "/items?page=" + currentPage;
+            System.out.println("Fetching items from URI: " + uri);
 
-        // PROCESS
-        for (MetaforgeItemDto dto : externalItems) {
-            LootArea lootArea = lootAreaRepository.findByName(dto.lootAreaName())
-                    .orElseGet(() -> {
-                        LootArea newCat = new LootArea();
-                        newCat.setName(dto.lootAreaName());
-                        return lootAreaRepository.save(newCat);
+            var response = restClient.get()
+                    .uri("https://metaforge.app/api/arc-raiders" + uri)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<MetaforgeResponse<MetaforgeItemDto>>() {
                     });
 
-            Optional<Item> existingItem = itemRepository.findByName(dto.name());
+            if (response == null || response.data() == null) {
+                System.err.println("API returned null response for page " + currentPage);
+                break;
+            }
 
-            Item itemToSave = existingItem.orElse(new Item());
-            itemToSave.setName(dto.name());
-            itemToSave.setRarity(dto.rarity());
-            itemToSave.setLootArea(lootArea);
-            itemToSave.setItemType(dto.itemType());
+            totalPages = response.pagination().totalPages();
+            List<MetaforgeItemDto> externalItems = response.data();
 
-            itemRepository.save(itemToSave);
+            // PROCESS
+            for (MetaforgeItemDto dto : externalItems) {
+                String areaName = dto.lootAreaName();
+                LootArea lootArea = null;
+
+                if (areaName != null && !areaName.isBlank()) {
+                    lootArea = lootAreaRepository.findByName(areaName)
+                            .orElseGet(() -> {
+                                LootArea newArea = new LootArea();
+                                newArea.setName(areaName);
+                                return lootAreaRepository.save(newArea);
+                            });
+                }
+
+                // Create/Update the Item Entity
+                Optional<Item> existingItem = itemRepository.findByName(dto.name());
+                Item itemToSave = getItemToSave(dto, existingItem, lootArea);
+
+                itemRepository.save(itemToSave);
+                totalItemsSynced++;
+            }
+
+            currentPage++;
+
+        } while (currentPage <= totalPages);
+
+        System.out.println("Successfully synced " + totalItemsSynced + " items across " + totalPages + " pages.");
+    }
+
+    private Item getItemToSave(MetaforgeItemDto dto, Optional<Item> existingItem, LootArea lootArea) {
+        Item itemToSave = existingItem.orElse(new Item());
+
+        itemToSave.setName(dto.name());
+        itemToSave.setDescription(dto.description());
+        itemToSave.setRarity(dto.rarity());
+        itemToSave.setItemType(dto.itemType());
+        itemToSave.setIconUrl(dto.icon());
+        itemToSave.setValue(dto.value());
+        itemToSave.setLootArea(lootArea);
+
+        if (dto.stats() != null) {
+            itemToSave.setWeight(dto.stats().weight());
+            itemToSave.setStackSize(dto.stats().stackSize());
         }
-
-        System.out.println("Successfully synced " + externalItems.size() + " items.");
+        return itemToSave;
     }
 }
