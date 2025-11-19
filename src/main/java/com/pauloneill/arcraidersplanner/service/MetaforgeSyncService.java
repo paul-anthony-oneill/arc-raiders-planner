@@ -2,18 +2,23 @@ package com.pauloneill.arcraidersplanner.service;
 
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDto;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeResponse;
-import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.model.Item;
-import com.pauloneill.arcraidersplanner.repository.LootAreaRepository;
+import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
+import com.pauloneill.arcraidersplanner.repository.LootAreaRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class MetaforgeSyncService {
 
@@ -21,7 +26,11 @@ public class MetaforgeSyncService {
     private final ItemRepository itemRepository;
     private final LootAreaRepository lootAreaRepository;
 
-    public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository, LootAreaRepository lootAreaRepository) {
+    @Value("${metaforge.api.url}")
+    private String metaforgeApiUrl;
+
+    public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
+                                LootAreaRepository lootAreaRepository) {
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
@@ -33,18 +42,22 @@ public class MetaforgeSyncService {
         int totalPages = 1;
         int totalItemsSynced = 0;
 
+        // Cache existing LootTypes to avoid repeated DB lookups in loop
+        Map<String, LootType> lootTypeCache = new HashMap<>();
+        lootAreaRepository.findAll().forEach(lt -> lootTypeCache.put(lt.getName(), lt));
+
         do {
             String uri = "/items?page=" + currentPage;
-            System.out.println("Fetching items from URI: " + uri);
+            log.info("Fetching items from URI: {}{}", metaforgeApiUrl, uri);
 
             var response = restClient.get()
-                    .uri("https://metaforge.app/api/arc-raiders" + uri)
+                    .uri(metaforgeApiUrl + uri)
                     .retrieve()
                     .body(new ParameterizedTypeReference<MetaforgeResponse<MetaforgeItemDto>>() {
                     });
 
             if (response == null || response.data() == null) {
-                System.err.println("API returned null response for page " + currentPage);
+                log.error("API returned null response for page {}", currentPage);
                 break;
             }
 
@@ -57,12 +70,11 @@ public class MetaforgeSyncService {
                 LootType lootType = null;
 
                 if (areaName != null && !areaName.isBlank()) {
-                    lootType = lootAreaRepository.findByName(areaName)
-                            .orElseGet(() -> {
-                                LootType newArea = new LootType();
-                                newArea.setName(areaName);
-                                return lootAreaRepository.save(newArea);
-                            });
+                    lootType = lootTypeCache.computeIfAbsent(areaName, name -> {
+                        LootType newArea = new LootType();
+                        newArea.setName(name);
+                        return lootAreaRepository.save(newArea);
+                    });
                 }
 
                 // Create/Update the Item Entity
@@ -77,7 +89,7 @@ public class MetaforgeSyncService {
 
         } while (currentPage <= totalPages);
 
-        System.out.println("Successfully synced " + totalItemsSynced + " items across " + totalPages + " pages.");
+        log.info("Successfully synced {} items across {} pages.", totalItemsSynced, totalPages);
     }
 
     private Item getItemToSave(MetaforgeItemDto dto, Optional<Item> existingItem, LootType lootType) {

@@ -1,10 +1,14 @@
-package com.pauloneill.arcraidersplanner; // Adjust package if needed
+package com.pauloneill.arcraidersplanner;
 
 import com.pauloneill.arcraidersplanner.service.MetaforgeSyncService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
+@ConditionalOnProperty(name = "app.sync-on-startup", havingValue = "true", matchIfMissing = false)
 public class StartupRunner implements CommandLineRunner {
 
     private final MetaforgeSyncService syncService;
@@ -15,12 +19,12 @@ public class StartupRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        System.out.println("--- STARTING DATA SYNC ---");
+        log.info("--- STARTING DATA SYNC ---");
         try {
             syncService.syncItems();
         } catch (Exception e) {
-            System.out.println("Sync failed : " + e.getMessage());
+            log.error("Sync failed : ", e);
         }
-        System.out.println("--- SYNC COMPLETE ---");
+        log.info("--- SYNC COMPLETE ---");
     }
 }

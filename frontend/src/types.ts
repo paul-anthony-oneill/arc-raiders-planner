@@ -21,3 +21,12 @@ export interface MapRecommendation {
     mapName: string;
     matchingAreaCount: number; // The count used for ranking
 }
+
+export interface Area {
+    id: number;
+    name: string;
+    mapX: number;
+    mapY: number;
+    coordinates?: string;
+    lootTypes: LootType[];
+}
