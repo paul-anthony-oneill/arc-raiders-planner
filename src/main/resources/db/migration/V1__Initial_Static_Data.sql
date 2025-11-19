@@ -34,7 +34,6 @@ area_raw_data AS (
         ('Old Battleground', -408, 156, '[[144.25833129882812,-459.75],[103.75833129882812,-432.25],[107.75833129882812,-386.25],[147.25833129882812,-345.75],[201.75833129882812,-357.75],[217.25833129882812,-394.75],[182.75833129882812,-427.25],[143.25833129882812,-458.25]]', 3, 'Dam Battlegrounds'),
         ('Control Tower', 192, -107, '[[-151.37083435058594,207.125],[-105.62083435058594,133.875],[-40.12083435058594,168.375],[-84.87083435058594,242.125],[-150.62083435058594,207.625]]', 1, 'Dam Battlegrounds')
     ) AS area_data (name, map_x, map_y, coordinates, loot_abundance, map_name)
-    -- Join raw data to maps CTE to get the correct map_id
     INNER JOIN inserted_maps map_id ON area_data.map_name = 'Dam Battlegrounds'
 ),
 
