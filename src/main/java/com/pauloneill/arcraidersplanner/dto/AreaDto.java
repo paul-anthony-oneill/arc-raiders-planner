@@ -10,5 +10,6 @@ public class AreaDto {
     private String name;
     private Integer mapX;
     private Integer mapY;
-    private Set<String> lootTypes; // Just the names
+    private Set<String> lootTypes;
+    private String coordinates;
 }

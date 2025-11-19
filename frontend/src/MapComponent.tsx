@@ -1,3 +1,5 @@
+// frontend/src/MapComponent.tsx
+
 import React from 'react';
 import {ImageOverlay, MapContainer, Marker, Polygon, Popup} from 'react-leaflet';
 import L from 'leaflet';
@@ -29,6 +31,9 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
         return [y, x] as L.LatLngTuple;
     };
 
+    console.log("MapComponent Rendered for:", mapName);
+    console.log("Areas received:", areas);
+
     return (
         <div style={{marginTop: '20px', border: '1px solid #ccc', height: '700px', width: '100%'}}>
             <h3 style={{textAlign: 'center', marginBottom: '10px'}}>
@@ -44,7 +49,7 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
                 style={{height: '100%', width: '100%'}}
             >
                 <ImageOverlay
-                    url="/maps/dam_battlegrounds.png"
+                    url="/maps/dam_battlegrounds.png" // Ensure this path is correct!
                     bounds={bounds}
                     attribution='&copy; Embark Studios'
                 />
@@ -54,11 +59,15 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
                     let polygonPositions: L.LatLngExpression[] | null = null;
 
                     if (area.coordinates) {
+                        console.log(`Found coordinates for ${area.name}:`, area.coordinates);
                         try {
                             polygonPositions = JSON.parse(area.coordinates);
+                            console.log(`Parsed polygon for ${area.name}:`, polygonPositions);
                         } catch (e) {
                             console.error(`Failed to parse coordinates for area ${area.name}`, e);
                         }
+                    } else {
+                        console.log(`No coordinates found for area: ${area.name}`);
                     }
 
                     return (

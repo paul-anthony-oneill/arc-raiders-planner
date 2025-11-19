@@ -1,8 +1,8 @@
 -- Flyway Script V1: Initial Static Data Load
 
 -- 1. INSERT LOOT TYPES
-INSERT INTO loot_types (id, name)
-VALUES (1, 'Industrial'),
+insert into loot_types (id, name)
+values (1, 'Industrial'),
        (2, 'Mechanical'),
        (3, 'Residential'),
        (4, 'ARC'),
@@ -12,11 +12,12 @@ VALUES (1, 'Industrial'),
        (8, 'Commercial'),
        (9, 'Medical'),
        (10, 'Security');
-INSERT INTO maps (id, name, description)
-VALUES (1, 'Dam Battlegrounds', 'dam');
 
-INSERT INTO areas (id, name, map_id, map_x, map_y, coordinates)
-VALUES (1, 'Maintenance Tunnels', 1, 150, 600, NULL),
+insert into maps (id, name, description)
+values (1, 'Dam Battlegrounds', 'dam');
+
+insert into areas (id, name, map_id, map_x, map_y, coordinates)
+values (1, 'Maintenance Tunnels', 1, 150, 600, null),
        (2, 'Housing Complex', 1, 400, 200, NULL),
        (3, 'North Factory', 1, 700, 300, NULL),
        (4, 'Dam Power Core', 1, 800, 600, NULL),
@@ -48,8 +49,8 @@ VALUES (1, 'Maintenance Tunnels', 1, 150, 600, NULL),
 -- This links Areas (Zones) to Loot Types (Categories).
 -- Format: (area_id, loot_type_id)
 
-INSERT INTO area_loot_type (area_id, loot_type_id)
-VALUES
+insert into area_loot_type (area_id, loot_type_id)
+values
 -- Water Treatment Control (ID 6): Industrial (1) AND Mechanical (2)
 (1, 1),
 (1, 2),
@@ -73,6 +74,6 @@ VALUES
 (11, 6);
 
 -- 5. RESET SEQUENCES
-SELECT setval(pg_get_serial_sequence('loot_types', 'id'), (SELECT MAX(id) FROM loot_types));
-SELECT setval(pg_get_serial_sequence('maps', 'id'), (SELECT MAX(id) FROM maps));
-SELECT setval(pg_get_serial_sequence('areas', 'id'), (SELECT MAX(id) FROM areas));
+select setval(pg_get_serial_sequence('loot_types', 'id'), (select max(id) from loot_types));
+select setval(pg_get_serial_sequence('maps', 'id'), (select max(id) from maps));
+select setval(pg_get_serial_sequence('areas', 'id'), (select max(id) from areas));

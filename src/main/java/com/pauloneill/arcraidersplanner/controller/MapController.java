@@ -59,7 +59,9 @@ public class MapController {
         dto.setName(area.getName());
         dto.setMapX(area.getMapX());
         dto.setMapY(area.getMapY());
-
+        if (area.getCoordinates() != null) {
+            dto.setCoordinates(area.getCoordinates());
+        }
         if (area.getLootTypes() != null) {
             dto.setLootTypes(area.getLootTypes().stream()
                     .map(LootType::getName)

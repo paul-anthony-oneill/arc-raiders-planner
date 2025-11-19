@@ -1,5 +1,6 @@
 package com.pauloneill.arcraidersplanner.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -30,6 +31,7 @@ public class Area {
     private Set<LootType> lootTypes = new HashSet<>();
 
     @Column(columnDefinition = "TEXT")
+    @JsonProperty
     private String coordinates;
 
     @ManyToOne
