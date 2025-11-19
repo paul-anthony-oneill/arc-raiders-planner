@@ -3,6 +3,8 @@ package com.pauloneill.arcraidersplanner.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.Set;
+
 @Data
 @Entity
 @Table(name = "maps")
@@ -18,4 +20,6 @@ public class GameMap {
     private String description;
 
     private String imageUrl;
+
+    private Set<Area> areas;
 }
