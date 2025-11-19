@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "app.sync-on-startup", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "app.sync-on-startup", havingValue = "true")
 public class StartupRunner implements CommandLineRunner {
 
     private final MetaforgeSyncService syncService;
@@ -22,6 +22,7 @@ public class StartupRunner implements CommandLineRunner {
         log.info("--- STARTING DATA SYNC ---");
         try {
             syncService.syncItems();
+            syncService.syncMarkers();
         } catch (Exception e) {
             log.error("Sync failed : ", e);
         }

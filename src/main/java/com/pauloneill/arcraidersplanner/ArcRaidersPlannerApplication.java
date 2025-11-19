@@ -15,7 +15,7 @@ public class ArcRaidersPlannerApplication {
     @Bean
     public RestClient restClient(RestClient.Builder builder) {
         return builder
-                .baseUrl("https://metaforge.app/api/arc-raiders")
+                .baseUrl("https://metaforge.app/api/")
                 .build();
     }
 }

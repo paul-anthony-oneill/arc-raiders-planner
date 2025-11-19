@@ -32,4 +32,16 @@ public class GameMap {
     @OneToMany(mappedBy = "gameMap", fetch = FetchType.LAZY)
     @JsonIgnore
     private Set<Area> areas;
+
+    @Column(name = "cal_scale_x")
+    private Double calibrationScaleX = 1.0;
+
+    @Column(name = "cal_scale_y")
+    private Double calibrationScaleY = 1.0;
+
+    @Column(name = "cal_offset_x")
+    private Double calibrationOffsetX = 0.0;
+
+    @Column(name = "cal_offset_y")
+    private Double calibrationOffsetY = 0.0;
 }

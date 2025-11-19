@@ -1,11 +1,17 @@
 package com.pauloneill.arcraidersplanner.service;
 
+import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDataResponse;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDto;
-import com.pauloneill.arcraidersplanner.dto.MetaforgeResponse;
+import com.pauloneill.arcraidersplanner.dto.MetaforgeMapDataResponse;
+import com.pauloneill.arcraidersplanner.dto.MetaforgeMarkerDto;
+import com.pauloneill.arcraidersplanner.model.GameMap;
 import com.pauloneill.arcraidersplanner.model.Item;
 import com.pauloneill.arcraidersplanner.model.LootType;
+import com.pauloneill.arcraidersplanner.model.MapMarker;
+import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.LootAreaRepository;
+import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -25,15 +31,19 @@ public class MetaforgeSyncService {
     private final RestClient restClient;
     private final ItemRepository itemRepository;
     private final LootAreaRepository lootAreaRepository;
+    private final MapMarkerRepository markerRepository;
+    private final GameMapRepository gameMapRepository;
 
     @Value("${metaforge.api.url}")
     private String metaforgeApiUrl;
 
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
-                                LootAreaRepository lootAreaRepository) {
+                                LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository, GameMapRepository gameMapRepository) {
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
+        this.markerRepository = markerRepository;
+        this.gameMapRepository = gameMapRepository;
     }
 
     @Transactional
@@ -47,13 +57,13 @@ public class MetaforgeSyncService {
         lootAreaRepository.findAll().forEach(lt -> lootTypeCache.put(lt.getName(), lt));
 
         do {
-            String uri = "/items?page=" + currentPage;
+            String uri = "/arc-raiders/items?page=" + currentPage;
             log.info("Fetching items from URI: {}{}", metaforgeApiUrl, uri);
 
             var response = restClient.get()
                     .uri(metaforgeApiUrl + uri)
                     .retrieve()
-                    .body(new ParameterizedTypeReference<MetaforgeResponse<MetaforgeItemDto>>() {
+                    .body(new ParameterizedTypeReference<MetaforgeItemDataResponse<MetaforgeItemDto>>() {
                     });
 
             if (response == null || response.data() == null) {
@@ -108,5 +118,58 @@ public class MetaforgeSyncService {
             itemToSave.setStackSize(dto.stats().stackSize());
         }
         return itemToSave;
+    }
+
+    @Transactional
+    public void syncMarkers() {
+        log.info("--- STARTING MARKER SYNC ---");
+
+        List<GameMap> maps = gameMapRepository.findAll();
+
+        for (GameMap map : maps) {
+            String mapApiCode = map.getDescription(); // e.g. "dam"
+            log.info("Fetching markers for map: {}...", map.getName());
+
+            try {
+                var response = restClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/game-map-data")
+                                .queryParam("tableID", "arc_map_data")
+                                .queryParam("mapID", mapApiCode)
+                                .build())
+                        .retrieve()
+                        .body(MetaforgeMapDataResponse.class);
+
+                // CHANGE 2: Extract from .allData()
+                if (response == null || response.allData() == null || response.allData().isEmpty()) {
+                    System.out.println("No markers found for " + map.getName());
+                    continue;
+                }
+
+                List<MetaforgeMarkerDto> dtos = response.allData();
+
+                System.out.println("Found " + dtos.size() + " markers for " + map.getName());
+
+                for (MetaforgeMarkerDto dto : dtos) {
+                    if (markerRepository.existsById(dto.id())) {
+                        continue;
+                    }
+
+                    MapMarker marker = new MapMarker();
+                    marker.setId(dto.id());
+                    marker.setLat(dto.lat());
+                    marker.setLng(dto.lng());
+                    marker.setCategory(dto.category());
+                    marker.setSubcategory(dto.subcategory());
+                    marker.setName(dto.name());
+                    marker.setGameMap(map);
+
+                    markerRepository.save(marker);
+                }
+            } catch (Exception e) {
+                log.error("Failed to sync markers for {}: {}", map.getName(), e.getMessage());
+            }
+        }
+        log.info("--- MARKER SYNC COMPLETE ---");
     }
 }

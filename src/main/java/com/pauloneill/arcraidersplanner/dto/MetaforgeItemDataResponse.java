@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-public record MetaforgeResponse<T>(
+public record MetaforgeItemDataResponse<T>(
         List<T> data,
         @JsonProperty("pagination") Pagination pagination
 ) {

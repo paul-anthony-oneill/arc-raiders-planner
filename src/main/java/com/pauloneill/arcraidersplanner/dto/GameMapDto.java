@@ -11,4 +11,8 @@ public class GameMapDto {
     private String description;
     private String imageUrl;
     private Set<AreaDto> areas;
+    private Double calibrationScaleX;
+    private Double calibrationScaleY;
+    private Double calibrationOffsetX;
+    private Double calibrationOffsetY;
 }

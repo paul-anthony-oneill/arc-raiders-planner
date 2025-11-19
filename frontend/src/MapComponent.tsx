@@ -86,7 +86,7 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
                                 </Polygon>
                             )}
 
-                            {/* 2. Draw the Marker (Icon) */}
+                            {/* 2. Draw the MapMarker (Icon) */}
                             <Marker
                                 position={coordsToLatLng(area.mapX || 0, area.mapY || 0)}
                                 icon={defaultIcon}
