@@ -38,6 +38,11 @@ public class MapController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping
+    public java.util.List<GameMap> getAllMaps() {
+        return mapRepository.findAll();
+    }
+
     private GameMapDto convertToDto(GameMap map) {
         GameMapDto dto = new GameMapDto();
         dto.setId(map.getId());

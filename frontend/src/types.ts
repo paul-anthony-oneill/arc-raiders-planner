@@ -29,4 +29,5 @@ export interface Area {
     mapY: number;
     coordinates?: string;
     lootTypes: LootType[];
+    lootAbundance: number;
 }

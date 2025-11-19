@@ -12,4 +12,5 @@ public class AreaDto {
     private Integer mapY;
     private Set<String> lootTypes;
     private String coordinates;
+    private Integer lootAbundance; // 1 - Abundant, 2- Decent, 3 - Sparse
 }

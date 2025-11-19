@@ -18,7 +18,8 @@ CREATE TABLE areas (
                        map_x INTEGER,
                        map_y INTEGER,
                        coordinates TEXT,
-                       map_id      BIGINT NOT NULL
+                       map_id BIGINT NOT NULL,
+                       loot_abundance INTEGER
 );
 
 CREATE TABLE items (

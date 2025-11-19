@@ -43,4 +43,7 @@ public class Area {
 
     @Column(name = "map_y")
     private Integer mapY;
+
+    @Column(name = "loot_abundance")
+    private Integer lootAbundance;
 }

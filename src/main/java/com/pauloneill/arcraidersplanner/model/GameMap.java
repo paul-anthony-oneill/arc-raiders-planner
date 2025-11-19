@@ -1,5 +1,6 @@
 package com.pauloneill.arcraidersplanner.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class GameMap {
 
     private String imageUrl;
 
-    @OneToMany(mappedBy = "gameMap")
+    @OneToMany(mappedBy = "gameMap", fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<Area> areas;
 }
