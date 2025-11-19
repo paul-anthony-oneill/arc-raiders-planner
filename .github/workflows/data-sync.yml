@@ -1,0 +1,21 @@
+name: data-sync.yml
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Metaforge Data Sync
+        env:
+          SYNC_URL: ${{ secrets.SYNC_URL }}
+          SYNC_API_KEY: ${{ secrets.SYNC_API_KEY }}
+        run: |
+          echo "Attempting to refresh database via API..."
+          curl -X POST "$SYNC_URL/api/admin/sync" \
+            -H "Content-Type: application/json" \
+            -H "X-API-KEY: $SYNC_API_KEY" \
+            --fail
+          echo "Sync job finished."
