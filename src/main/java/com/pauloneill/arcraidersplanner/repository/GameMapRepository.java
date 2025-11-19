@@ -29,4 +29,7 @@ public interface GameMapRepository extends JpaRepository<GameMap, Long> {
     );
 
     Optional<GameMap> findByName(String name);
+
+    @Query("SELECT m FROM GameMap m JOIN FETCH m.areas a WHERE m.name = :mapName")
+    Optional<GameMap> findByNameWithAreas(@Param("mapName") String mapName);
 }
