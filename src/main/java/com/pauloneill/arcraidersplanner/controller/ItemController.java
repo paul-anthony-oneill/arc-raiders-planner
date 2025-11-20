@@ -1,14 +1,12 @@
 package com.pauloneill.arcraidersplanner.controller;
 
 import com.pauloneill.arcraidersplanner.dto.ItemDto;
-import com.pauloneill.arcraidersplanner.dto.MapRecommendationDto;
+import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
+import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
 import com.pauloneill.arcraidersplanner.model.Item;
 import com.pauloneill.arcraidersplanner.service.ItemService;
 import com.pauloneill.arcraidersplanner.service.PlannerService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,15 +40,13 @@ public class ItemController {
     }
 
     /**
-     * Endpoint: GET /api/items/recommendation?itemName={itemName}
-     * Returns a list of maps, ordered by the count of areas that match the item's
-     * required loot type.
+     * Endpoint: POST /api/items/plan
+     * Accepts a sophisticated loadout request (items, keys, preferred mode)
+     * and returns ranked maps with calculated routes.
      */
-    @GetMapping("/recommendation")
-    public List<MapRecommendationDto> getRecommendationByItem(
-            @RequestParam String itemName) {
-
-        return plannerService.recommendMapsByItemName(itemName);
+    @PostMapping("/plan")
+    public List<PlannerResponseDto> planRoute(@RequestBody PlannerRequestDto request) {
+        return plannerService.generateRoute(request);
     }
 
     private ItemDto convertToDto(Item item) {
