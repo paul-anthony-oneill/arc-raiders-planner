@@ -66,6 +66,9 @@ function App() {
 
                 // 2. Fetch Map Data
                 const mapResponse = await fetch(`${API_MAP_DATA_URL}/${encodeURIComponent(recommendedMapName)}/data`);
+                if (!mapResponse.ok) {
+                    throw new Error(`Failed to fetch map data: ${mapResponse.status} ${mapResponse.statusText}`);
+                }
                 const mapJson = await mapResponse.json();
 
                 setMapData(mapJson);
