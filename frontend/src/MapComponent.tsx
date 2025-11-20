@@ -4,6 +4,7 @@ import { ImageOverlay, MapContainer, Marker, Polygon, Popup } from 'react-leafle
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Area } from './types';
+import type { Area } from './types';
 
 // Define the component's props
 interface MapProps {
@@ -55,15 +56,16 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
             </h3>
             <MapContainer
                 center={[0, 0]}
-                zoom={1}
-                minZoom={-1}
+                zoom={0}
+                minZoom={-2}
                 maxZoom={2}
                 crs={L.CRS.Simple}
                 bounds={bounds}
                 style={{ height: '100%', width: '100%' }}
+                style={{ height: '100%', width: '100%' }}
             >
                 <ImageOverlay
-                    url="/maps/dam_battlegrounds.png" // Ensure this path is correct!
+                    url={getMapImageUrl(mapName)}
                     bounds={bounds}
                     attribution='&copy; Embark Studios'
                 />
@@ -73,15 +75,11 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
                     let polygonPositions: L.LatLngExpression[] | null = null;
 
                     if (area.coordinates) {
-                        console.log(`Found coordinates for ${area.name}:`, area.coordinates);
                         try {
                             polygonPositions = JSON.parse(area.coordinates);
-                            console.log(`Parsed polygon for ${area.name}:`, polygonPositions);
                         } catch (e) {
                             console.error(`Failed to parse coordinates for area ${area.name}`, e);
                         }
-                    } else {
-                        console.log(`No coordinates found for area: ${area.name}`);
                     }
 
                     return (
@@ -91,9 +89,11 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
                                 <Polygon
                                     positions={polygonPositions}
                                     pathOptions={{ color: 'red', fillColor: '#ff0000', fillOpacity: 0.2 }}
+                                    pathOptions={{ color: 'red', fillColor: '#ff0000', fillOpacity: 0.2 }}
                                 >
                                     {/* Popup for the Polygon click */}
                                     <Popup>
+                                        <strong>{area.name}</strong><br />
                                         <strong>{area.name}</strong><br />
                                         Types: {area.lootTypes.map(lt => lt.name).join(', ')}
                                     </Popup>
@@ -106,6 +106,7 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
                                 icon={defaultIcon}
                             >
                                 <Popup>
+                                    <strong>{area.name}</strong><br />
                                     <strong>{area.name}</strong><br />
                                     Types: {area.lootTypes.map(lt => lt.name).join(', ')}
                                 </Popup>
