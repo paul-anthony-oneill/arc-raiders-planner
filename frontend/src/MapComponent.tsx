@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ImageOverlay, MapContainer, Marker, Polygon, Popup } from 'react-leaflet';
->>>>>>> Stashed changes
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { Area } from './types';
 import type { Area } from './types';
 
 // Define the component's props
@@ -62,7 +60,6 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
                 crs={L.CRS.Simple}
                 bounds={bounds}
                 style={{ height: '100%', width: '100%' }}
-                style={{ height: '100%', width: '100%' }}
             >
                 <ImageOverlay
                     url={getMapImageUrl(mapName)}
@@ -88,7 +85,6 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
                             {polygonPositions && (
                                 <Polygon
                                     positions={polygonPositions}
-                                    pathOptions={{ color: 'red', fillColor: '#ff0000', fillOpacity: 0.2 }}
                                     pathOptions={{ color: 'red', fillColor: '#ff0000', fillOpacity: 0.2 }}
                                 >
                                     {/* Popup for the Polygon click */}
