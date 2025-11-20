@@ -1,7 +1,12 @@
+<<<<<<< Updated upstream
 // frontend/src/MapComponent.tsx
 
 import React from 'react';
 import {ImageOverlay, MapContainer, Marker, Polygon, Popup} from 'react-leaflet';
+=======
+import React, { useState, useEffect } from 'react';
+import { ImageOverlay, MapContainer, Marker, Polygon, Popup } from 'react-leaflet';
+>>>>>>> Stashed changes
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type {Area} from './types';
@@ -21,8 +26,13 @@ const defaultIcon = L.icon({
     shadowUrl: 'marker-shadow.png'
 });
 
+<<<<<<< Updated upstream
 const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
     const bounds: L.LatLngBoundsLiteral = [[-1000, -1000], [1000, 1000]];
+=======
+const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
+    const [bounds, setBounds] = useState<L.LatLngBoundsLiteral>([[-1000, -1000], [1000, 1000]]);
+>>>>>>> Stashed changes
 
     // Function to convert our simple mapX/mapY coordinates to Leaflet LatLng
     const coordsToLatLng = (x: number, y: number): L.LatLngTuple => {
@@ -33,6 +43,19 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
 
     console.log("MapComponent Rendered for:", mapName);
     console.log("Areas received:", areas);
+
+    useEffect(() => {
+        const img = new Image();
+        img.src = getMapImageUrl(mapName);
+        img.onload = () => {
+            const aspect = img.width / img.height;
+            // We keep the width fixed at 2000 units (-1000 to 1000)
+            // and adjust the height based on the aspect ratio.
+            const targetHeight = 2000 / aspect;
+            const halfHeight = targetHeight / 2;
+            setBounds([[-halfHeight, -1000], [halfHeight, 1000]]);
+        };
+    }, [mapName]);
 
     return (
         <div style={{marginTop: '20px', border: '1px solid #ccc', height: '700px', width: '100%'}}>
