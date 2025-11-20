@@ -29,6 +29,6 @@ public interface GameMapRepository extends JpaRepository<GameMap, Long> {
 
     Optional<GameMap> findByName(String name);
 
-    @Query("SELECT DISTINCT m FROM GameMap m JOIN FETCH m.areas a LEFT JOIN FETCH a.lootTypes WHERE m.name = :mapName")
+    @Query("SELECT DISTINCT m FROM GameMap m LEFT JOIN FETCH m.areas a LEFT JOIN FETCH a.lootTypes WHERE m.name = :mapName")
     Optional<GameMap> findByNameWithAreas(@Param("mapName") String mapName);
 }

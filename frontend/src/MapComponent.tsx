@@ -20,7 +20,7 @@ const defaultIcon = L.icon({
 });
 
 const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
-    const [bounds, setBounds] = useState<L.LatLngBoundsLiteral>([[-1000, -1000], [1000, 1000]]);
+    const bounds: L.LatLngBoundsLiteral = [[-1000, -1000], [1000, 1000]];
 
     // Function to convert our simple mapX/mapY coordinates to Leaflet LatLng
     const coordsToLatLng = (x: number, y: number): L.LatLngTuple => {
@@ -34,24 +34,8 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
         return `/maps/${filename}.png`;
     };
 
-    useEffect(() => {
-        const img = new Image();
-        img.src = getMapImageUrl(mapName);
-        img.onload = () => {
-            const aspect = img.width / img.height;
-            // We keep the width fixed at 2000 units (-1000 to 1000)
-            // and adjust the height based on the aspect ratio.
-            const targetHeight = 2000 / aspect;
-            const halfHeight = targetHeight / 2;
-            setBounds([[-halfHeight, -1000], [halfHeight, 1000]]);
-        };
-    }, [mapName]);
-
     return (
-        <div style={{ marginTop: '20px', border: '1px solid #ccc', height: '700px', width: '100%' }}>
-            <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>
-                Visualizing Loot Zones on the **{mapName}** Map
-            </h3>
+        <div className="h-full w-full">
             <MapContainer
                 center={[0, 0]}
                 zoom={0}
@@ -90,7 +74,6 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
                                     {/* Popup for the Polygon click */}
                                     <Popup>
                                         <strong>{area.name}</strong><br />
-                                        <strong>{area.name}</strong><br />
                                         Types: {area.lootTypes.map(lt => lt.name).join(', ')}
                                     </Popup>
                                 </Polygon>
@@ -102,7 +85,6 @@ const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
                                 icon={defaultIcon}
                             >
                                 <Popup>
-                                    <strong>{area.name}</strong><br />
                                     <strong>{area.name}</strong><br />
                                     Types: {area.lootTypes.map(lt => lt.name).join(', ')}
                                 </Popup>
