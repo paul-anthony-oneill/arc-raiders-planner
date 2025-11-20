@@ -56,6 +56,9 @@ function App() {
             // 1. Fetch Recommendation
             const encodedName = encodeURIComponent(primaryObjective.name);
             const recResponse = await fetch(`${API_RECOMMENDATION_URL}?itemName=${encodedName}`);
+            if (!recResponse.ok) {
+                throw new Error(`Failed to fetch recommendations: ${recResponse.status} ${recResponse.statusText}`);
+            }
             const recs: MapRecommendation[] = await recResponse.json();
 
             if (recs.length > 0) {
