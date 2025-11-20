@@ -1,10 +1,10 @@
 // frontend/src/MapComponent.tsx
 
 import React from 'react';
-import {ImageOverlay, MapContainer, Marker, Polygon, Popup} from 'react-leaflet';
+import { ImageOverlay, MapContainer, Marker, Polygon, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type {Area} from './types';
+import type { Area } from './types';
 
 // Define the component's props
 interface MapProps {
@@ -21,7 +21,7 @@ const defaultIcon = L.icon({
     shadowUrl: 'marker-shadow.png'
 });
 
-const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
+const MapComponent: React.FC<MapProps> = ({ mapName, areas }) => {
     const bounds: L.LatLngBoundsLiteral = [[-1000, -1000], [1000, 1000]];
 
     // Function to convert our simple mapX/mapY coordinates to Leaflet LatLng
@@ -31,25 +31,24 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
         return [y, x] as L.LatLngTuple;
     };
 
-    console.log("MapComponent Rendered for:", mapName);
-    console.log("Areas received:", areas);
+    const getMapImageUrl = (name: string) => {
+        const filename = name.toLowerCase().replace(/ /g, '_');
+        return `/maps/${filename}.png`;
+    };
 
     return (
-        <div style={{marginTop: '20px', border: '1px solid #ccc', height: '700px', width: '100%'}}>
-            <h3 style={{textAlign: 'center', marginBottom: '10px'}}>
-                Visualizing Loot Zones on the **{mapName}** Map
-            </h3>
+        <div className="h-full w-full">
             <MapContainer
                 center={[0, 0]}
-                zoom={1}
-                minZoom={-1}
+                zoom={0}
+                minZoom={-2}
                 maxZoom={2}
                 crs={L.CRS.Simple}
                 bounds={bounds}
-                style={{height: '100%', width: '100%'}}
+                style={{ height: '100%', width: '100%' }}
             >
                 <ImageOverlay
-                    url="/maps/dam_battlegrounds.png" // Ensure this path is correct!
+                    url={getMapImageUrl(mapName)}
                     bounds={bounds}
                     attribution='&copy; Embark Studios'
                 />
@@ -59,15 +58,11 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
                     let polygonPositions: L.LatLngExpression[] | null = null;
 
                     if (area.coordinates) {
-                        console.log(`Found coordinates for ${area.name}:`, area.coordinates);
                         try {
                             polygonPositions = JSON.parse(area.coordinates);
-                            console.log(`Parsed polygon for ${area.name}:`, polygonPositions);
                         } catch (e) {
                             console.error(`Failed to parse coordinates for area ${area.name}`, e);
                         }
-                    } else {
-                        console.log(`No coordinates found for area: ${area.name}`);
                     }
 
                     return (
@@ -76,11 +71,11 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
                             {polygonPositions && (
                                 <Polygon
                                     positions={polygonPositions}
-                                    pathOptions={{color: 'red', fillColor: '#ff0000', fillOpacity: 0.2}}
+                                    pathOptions={{ color: 'red', fillColor: '#ff0000', fillOpacity: 0.2 }}
                                 >
                                     {/* Popup for the Polygon click */}
                                     <Popup>
-                                        <strong>{area.name}</strong><br/>
+                                        <strong>{area.name}</strong><br />
                                         Types: {area.lootTypes.map(lt => lt.name).join(', ')}
                                     </Popup>
                                 </Polygon>
@@ -92,7 +87,7 @@ const MapComponent: React.FC<MapProps> = ({mapName, areas}) => {
                                 icon={defaultIcon}
                             >
                                 <Popup>
-                                    <strong>{area.name}</strong><br/>
+                                    <strong>{area.name}</strong><br />
                                     Types: {area.lootTypes.map(lt => lt.name).join(', ')}
                                 </Popup>
                             </Marker>

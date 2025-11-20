@@ -1,8 +1,8 @@
-import React, {useEffect, useState} from 'react';
-import {CircleMarker, ImageOverlay, MapContainer, Polygon, Polyline, Popup, useMapEvents} from 'react-leaflet';
+import React, { useEffect, useState } from 'react';
+import { CircleMarker, ImageOverlay, MapContainer, Polygon, Polyline, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type {Area} from './types';
+import type { Area } from './types';
 
 // --- TYPES ---
 interface GameMap {
@@ -30,8 +30,8 @@ interface MapEditorProps {
 }
 
 // --- STYLES ---
-const drawOptions = {color: '#00ff00', dashArray: '5, 5'};
-const existingAreaOptions = {color: 'gray', fillColor: 'gray', fillOpacity: 0.2, weight: 1};
+const drawOptions = { color: '#00ff00', dashArray: '5, 5' };
+const existingAreaOptions = { color: 'gray', fillColor: 'gray', fillOpacity: 0.2, weight: 1 };
 
 const markerOptions = {
     radius: 4,
@@ -91,7 +91,6 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
     const [generatedCode, setGeneratedCode] = useState('');
 
     // --- HELPER: Transform Coordinates ---
-// --- HELPER: Transform Coordinates ---
     const transformMarker = (marker: GameMarker, map: GameMap): L.LatLngTuple => {
         const scaleX = map.calibrationScaleX ?? 1.0;
         const scaleY = map.calibrationScaleY ?? 1.0;
@@ -175,7 +174,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
         if (!currentLocalPoint) return;
         const point = {
             local: currentLocalPoint,
-            api: {x: parseFloat(tempApiX), y: parseFloat(tempApiY)}
+            api: { x: parseFloat(tempApiX), y: parseFloat(tempApiY) }
         };
         setCalPoints([...calPoints, point]);
         setShowCalInput(false);
@@ -202,15 +201,15 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
         const scaleY = (py2.local.lat - py1.local.lat) / (py2.api.y - py1.api.y);
         const offsetY = py1.local.lat - (py1.api.y * scaleY);
 
-        console.log("Calculated 4-Point Calibration:", {scaleX, scaleY, offsetX, offsetY});
+        console.log("Calculated 4-Point Calibration:", { scaleX, scaleY, offsetX, offsetY });
 
         if (!isFinite(scaleX) || !isFinite(scaleY)) return alert("Invalid calculation.");
 
         try {
             const res = await fetch(`/api/maps/${selectedMap.id}/calibration`, {
                 method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({scaleX, scaleY, offsetX, offsetY})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scaleX, scaleY, offsetX, offsetY })
             });
 
             if (res.ok) {
@@ -249,7 +248,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
             totalLat += p.lat;
             totalLng += p.lng;
         });
-        return {x: Math.round(totalLng / points.length), y: Math.round(totalLat / points.length)};
+        return { x: Math.round(totalLng / points.length), y: Math.round(totalLat / points.length) };
     };
 
     const handleGenerate = () => {
@@ -269,42 +268,37 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            height: '100vh',
-            flexDirection: 'column',
-            width: '100vw',
-            marginLeft: 'calc(50% - 50vw)',
-            marginRight: 'calc(50% - 50vw)'
-        }}>
-            {/* TOOLBAR */}
+        <div className="fixed inset-0 z-50 bg-retro-bg flex flex-col text-retro-sand font-mono">
+            {/* HEADER */}
             <div style={{
-                padding: '10px',
-                background: '#222',
+                padding: '10px 20px',
+                background: '#1a1a1a',
+                borderBottom: '1px solid #444',
                 color: 'white',
                 display: 'flex',
                 gap: '20px',
-                alignItems: 'center'
+                alignItems: 'center',
+                flexShrink: 0
             }}>
                 <h3>🛠️ Map Editor</h3>
                 <select
                     value={selectedMap?.name || ''}
                     onChange={e => handleMapSelect(e.target.value)}
-                    style={{ padding: '5px' }}
+                    style={{ padding: '5px', background: '#333', color: 'white', border: '1px solid #555' }}
                 >
                     {maps.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                 </select>
-                <button onClick={onExit} style={{ marginLeft: 'auto', background: '#d32f2f' }}>Exit</button>
+                <button onClick={onExit} style={{ marginLeft: 'auto', background: '#d32f2f', padding: '5px 15px', border: 'none', cursor: 'pointer' }}>Exit</button>
                 <button
                     onClick={() => setIsCalibrating(!isCalibrating)}
-                    style={{background: isCalibrating ? '#ff9800' : '#555'}}
+                    style={{ background: isCalibrating ? '#ff9800' : '#555', padding: '5px 15px', border: 'none', cursor: 'pointer' }}
                 >
                     {isCalibrating ? 'Cancel Calibration' : 'Calibrate Map (4-Point)'}
                 </button>
             </div>
 
             {/* MAIN CONTENT */}
-            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', flexGrow: 1, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', flex: 1, overflow: 'hidden' }}>
 
                 {/* SIDEBAR CONTROLS */}
                 <div style={{ padding: '20px', background: '#1a1a1a', color: '#eee', overflowY: 'auto', borderRight: '1px solid #444' }}>
@@ -317,17 +311,17 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                             marginBottom: '20px'
                         }}>
                             <h4>📐 4-Point Calibration</h4>
-                            <p style={{fontSize: '0.85em', lineHeight: '1.5'}}>
-                                <strong>X-Axis (Width):</strong><br/>
-                                1. Click Far <b>LEFT</b> point -{">"} Enter Coords<br/>
-                                2. Click Far <b>RIGHT</b> point -{">"} Enter Coords<br/>
-                                <br/>
-                                <strong>Y-Axis (Height):</strong><br/>
-                                3. Click Far <b>TOP</b> point -{">"} Enter Coords<br/>
+                            <p style={{ fontSize: '0.85em', lineHeight: '1.5' }}>
+                                <strong>X-Axis (Width):</strong><br />
+                                1. Click Far <b>LEFT</b> point -{">"} Enter Coords<br />
+                                2. Click Far <b>RIGHT</b> point -{">"} Enter Coords<br />
+                                <br />
+                                <strong>Y-Axis (Height):</strong><br />
+                                3. Click Far <b>TOP</b> point -{">"} Enter Coords<br />
                                 4. Click Far <b>BOTTOM</b> point -{">"} Enter Coords
                             </p>
 
-                            <div style={{marginBottom: '10px', fontSize: '0.9em'}}>
+                            <div style={{ marginBottom: '10px', fontSize: '0.9em' }}>
                                 <div>X1 (Left): {calPoints[0] ? "✅" : "Waiting..."}</div>
                                 <div>X2 (Right): {calPoints[1] ? "✅" : "Waiting..."}</div>
                                 <div>Y1 (Top): {calPoints[2] ? "✅" : "Waiting..."}</div>
@@ -337,14 +331,14 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                             <button
                                 onClick={calculateAndSaveCalibration}
                                 disabled={calPoints.length < 4}
-                                style={{width: '100%', background: '#4CAF50', padding: '10px'}}
+                                style={{ width: '100%', background: '#4CAF50', padding: '10px', border: 'none', cursor: 'pointer', marginTop: '10px' }}
                             >
                                 Calculate & Save
                             </button>
 
                             <button
                                 onClick={() => setCalPoints([])}
-                                style={{width: '100%', background: '#d32f2f', marginTop: '5px', padding: '5px'}}
+                                style={{ width: '100%', background: '#d32f2f', marginTop: '5px', padding: '5px', border: 'none', cursor: 'pointer' }}
                             >
                                 Reset Points
                             </button>
@@ -352,38 +346,42 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                     ) : (
                         <>
                             <h4>New Area Details</h4>
-                            <div style={{marginBottom: '15px'}}>
-                                <label style={{display: 'block', marginBottom: '5px', fontSize: '0.9em'}}>Area
+                            <div style={{ marginBottom: '15px' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9em' }}>Area
                                     Name</label>
                                 <input type="text" value={areaName} onChange={e => setAreaName(e.target.value)}
-                                       style={{width: '100%', padding: '8px'}}/>
+                                    style={{ width: '100%', padding: '8px', background: '#333', border: '1px solid #555', color: 'white' }} />
                             </div>
-                            <div style={{marginBottom: '20px'}}>
-                                <label style={{display: 'block', marginBottom: '5px', fontSize: '0.9em'}}>Loot Abundance
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9em' }}>Loot Abundance
                                     (1-3)</label>
                                 <select value={lootAbundance} onChange={e => setLootAbundance(Number(e.target.value))}
-                                        style={{width: '100%', padding: '8px'}}>
-                                    <option value={1}>1 - Low</option>
-                                    <option value={2}>2 - Medium</option>
-                                    <option value={3}>3 - High</option>
+                                    style={{ width: '100%', padding: '8px', background: '#333', border: '1px solid #555', color: 'white' }}>
+                                    <option value={1}>1 - High Tier</option>
+                                    <option value={2}>2 - Medium Tier</option>
+                                    <option value={3}>3 - Low Tier</option>
                                 </select>
                             </div>
-                            <div style={{display: 'flex', gap: '10px', marginBottom: '20px'}}>
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                                 <button onClick={handleGenerate} disabled={drawPoints.length < 3}
-                                        style={{flex: 1, background: '#2196F3'}}>Generate SQL
+                                    style={{ flex: 1, background: '#2196F3', border: 'none', padding: '8px', cursor: 'pointer' }}>Generate SQL
                                 </button>
                                 <button onClick={() => {
                                     setDrawPoints([]);
                                     setGeneratedCode('');
-                                }} style={{background: '#555'}}>Clear
+                                }} style={{ background: '#555', border: 'none', padding: '8px', cursor: 'pointer' }}>Clear
                                 </button>
                             </div>
                             {generatedCode && <textarea value={generatedCode} readOnly style={{
                                 width: '100%',
                                 height: '100px',
                                 fontSize: '0.75rem',
-                                fontFamily: 'monospace'
-                            }}/>}
+                                fontFamily: 'monospace',
+                                background: '#111',
+                                color: '#0f0',
+                                border: '1px solid #333',
+                                padding: '5px'
+                            }} />}
                         </>
                     )}
 
@@ -396,7 +394,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                         borderTop: '1px solid #444'
                     }}>
                         <h5>Marker Filters (Debug)</h5>
-                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '5px'}}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                             {Array.from(new Set(gameMarkers.map(m => m.category))).map(cat => (
                                 <label key={cat} style={{
                                     fontSize: '0.8em',
@@ -423,7 +421,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                 </div>
 
                 {/* MAP CANVAS */}
-                <div style={{position: 'relative', background: '#000', height: '900px', width: '100%'}}>
+                <div style={{ position: 'relative', background: '#000', height: '100%', width: '100%' }}>
                     {/* CALIBRATION POPUP */}
                     {showCalInput && (
                         <div style={{
@@ -439,38 +437,40 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                             boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
                         }}>
                             <h4>Enter API Coordinates</h4>
-                            <div style={{display: 'flex', gap: '10px', marginBottom: '10px'}}>
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                                 {/* SWAPPED: Lat (Y) first, then Lng (X) */}
                                 <input
                                     placeholder="API Lat (Y)"
                                     value={tempApiY}
                                     onChange={e => setTempApiY(e.target.value)}
                                     autoFocus
+                                    style={{ padding: '5px', border: '1px solid #ccc' }}
                                 />
                                 <input
                                     placeholder="API Lng (X)"
                                     value={tempApiX}
                                     onChange={e => setTempApiX(e.target.value)}
+                                    style={{ padding: '5px', border: '1px solid #ccc' }}
                                 />
                             </div>
-                            <button onClick={saveCalibrationPoint}>Confirm Point</button>
+                            <button onClick={saveCalibrationPoint} style={{ padding: '5px 10px', background: '#4CAF50', color: 'white', border: 'none', cursor: 'pointer' }}>Confirm Point</button>
                             <button onClick={() => setShowCalInput(false)}
-                                    style={{marginLeft: '10px', background: '#ccc'}}>Cancel
+                                style={{ marginLeft: '10px', background: '#ccc', padding: '5px 10px', border: 'none', cursor: 'pointer' }}>Cancel
                             </button>
                         </div>
                     )}
 
                     {selectedMap ? (
                         <MapContainer center={[0, 0]} zoom={0} minZoom={-2} maxZoom={2} crs={L.CRS.Simple}
-                                      bounds={bounds} style={{height: '100%', width: '100%'}}>
-                            <ClickHandler onClick={onMapClick}/>
-                            <ImageOverlay url={getMapImageUrl(selectedMap)} bounds={bounds}/>
+                            bounds={bounds} style={{ height: '100%', width: '100%' }}>
+                            <ClickHandler onClick={onMapClick} />
+                            <ImageOverlay url={getMapImageUrl(selectedMap)} bounds={bounds} />
 
                             {/* 1. Calibration Points */}
                             {isCalibrating && calPoints.map((p, i) => (
                                 <CircleMarker key={`cal-${i}`} center={p.local} {...calibrationPointOptions}>
                                     <Popup>
-                                        Calibration Point {i + 1}<br/>
+                                        Calibration Point {i + 1}<br />
                                         {i < 2 ? "(X-Axis)" : "(Y-Axis)"}
                                     </Popup>
                                 </CircleMarker>
@@ -487,7 +487,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                                 }
                                 if (!positions) return null;
                                 return <Polygon key={area.id} positions={positions}
-                                                pathOptions={existingAreaOptions}><Popup>{area.name}</Popup></Polygon>;
+                                    pathOptions={existingAreaOptions}><Popup>{area.name}</Popup></Polygon>;
                             })}
 
                             {/* 3. Game Markers (Dots) */}
@@ -500,10 +500,10 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                                         {...markerOptions}
                                     >
                                         <Popup>
-                                            <strong>{marker.name || marker.category}</strong><br/>
-                                            <small>{marker.subcategory}</small><br/>
+                                            <strong>{marker.name || marker.category}</strong><br />
+                                            <small>{marker.subcategory}</small><br />
                                             <small
-                                                style={{color: '#666'}}>API: {marker.lng.toFixed(0)}, {marker.lat.toFixed(0)}</small>
+                                                style={{ color: '#666' }}>API: {marker.lng.toFixed(0)}, {marker.lat.toFixed(0)}</small>
                                         </Popup>
                                     </CircleMarker>
                                 ))
@@ -514,10 +514,10 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                                 <>
                                     <Polyline positions={drawPoints} pathOptions={drawOptions} />
                                     {drawPoints.map((p, i) => <CircleMarker key={`draw-${i}`}
-                                                                            center={p} {...drawingPointOptions} />)}
+                                        center={p} {...drawingPointOptions} />)}
                                     {drawPoints.length > 2 &&
                                         <Polyline positions={[drawPoints[drawPoints.length - 1], drawPoints[0]]}
-                                                  pathOptions={{...drawOptions, opacity: 0.4}}/>}
+                                            pathOptions={{ ...drawOptions, opacity: 0.4 }} />}
                                 </>
                             )}
                         </MapContainer>

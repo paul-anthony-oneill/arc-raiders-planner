@@ -1,68 +1,85 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme {
+  --color-retro-bg: #1a1a1a;
+  --color-retro-dark: #121212;
+  --color-retro-black: #050505;
+  --color-retro-sand: #e6d5b8;
+  --color-retro-sand-dim: #b0a080;
+  --color-retro-orange: #ff6b00;
+  --color-retro-orange-dim: #cc5500;
+  --color-retro-green: #00ff41;
+  --color-retro-red: #ff003c;
+
+  --font-display: "Chakra Petch", sans-serif;
+  --font-mono: "Share Tech Mono", monospace;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+@layer utilities {
+  .crt-overlay {
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg,
+        rgba(255, 0, 0, 0.06),
+        rgba(0, 255, 0, 0.02),
+        rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 5px currentColor;
+  }
+
+  .box-glow {
+    box-shadow: 0 0 10px rgba(255, 107, 0, 0.3);
+  }
+
+  .scanline-anim {
+    animation: scanline 8s linear infinite;
+  }
 }
 
+@keyframes scanline {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+/* Base Styles */
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  @apply bg-retro-dark text-retro-sand font-mono overflow-hidden;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+::-webkit-scrollbar-track {
+  @apply bg-retro-black;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+::-webkit-scrollbar-thumb {
+  @apply bg-retro-sand-dim;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-retro-orange;
+}
+
+/* Accessibility Toggle Class */
+body.accessibility-mode .crt-overlay {
+  display: none;
+}
+
+body.accessibility-mode {
+  text-shadow: none !important;
+  font-family: ui-sans-serif, system-ui, sans-serif !important;
 }
