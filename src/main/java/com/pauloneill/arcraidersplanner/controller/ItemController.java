@@ -40,6 +40,22 @@ public class ItemController {
     }
 
     /**
+     * Backward-compatible endpoint for legacy UI.
+     * GET /api/items/recommendation?itemName=X
+     * Returns basic map recommendations using PURE_SCAVENGER mode.
+     */
+    @GetMapping("/recommendation")
+    public List<PlannerResponseDto> getRecommendation(@RequestParam String itemName) {
+        PlannerRequestDto request = new PlannerRequestDto(
+                List.of(itemName),
+                null,
+                false,
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+        );
+        return plannerService.generateRoute(request);
+    }
+
+    /**
      * Endpoint: POST /api/items/plan
      * Accepts a sophisticated loadout request (items, keys, preferred mode)
      * and returns ranked maps with calculated routes.

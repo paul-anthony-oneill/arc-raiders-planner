@@ -3,11 +3,11 @@ import Sidebar from './Sidebar';
 import DataHUD from './DataHUD';
 import MapComponent from './MapComponent';
 import MapEditor from './MapEditor';
-import type { Item, Area, MapRecommendation } from './types';
+import { RoutingProfile } from './types';
+import type { Item, Area, PlannerResponse, PlannerRequest } from './types';
 import './App.css';
 
-const API_RECOMMENDATION_URL = '/api/items/recommendation';
-const API_MAP_DATA_URL = '/api/maps';
+const API_PLAN_URL = '/api/items/plan';
 
 function App() {
     // State
@@ -17,6 +17,10 @@ function App() {
     const [stats, setStats] = useState<any | null>(null);
     const [showEditor, setShowEditor] = useState(false);
     const [accessibilityMode, setAccessibilityMode] = useState(false);
+
+    // --- NEW STATE ---
+    const [routingProfile, setRoutingProfile] = useState<RoutingProfile>(RoutingProfile.PURE_SCAVENGER);
+    const [hasRaiderKey, setHasRaiderKey] = useState<boolean>(false);
 
     // Handlers
     const handleAddToLoadout = (item: Item) => {
@@ -40,51 +44,49 @@ function App() {
         if (loadout.length === 0) return;
 
         setIsCalculating(true);
-        setStats(null); // Reset stats
+        setStats(null);
 
         try {
-            // For this demo, we use the first item to determine the map
-            // In a real app, this would be a complex multi-objective optimization
-            const primaryObjective = loadout[0];
+            // Construct the new Request Object using STATE values
+            const requestBody: PlannerRequest = {
+                targetItemNames: loadout.map(i => i.name),
+                hasRaiderKey: hasRaiderKey,
+                routingProfile: routingProfile
+            };
 
-            if (!primaryObjective.lootType) {
-                // Fallback if no loot type (e.g. crafted item)
-                // Just mock some data or show error
-                console.warn("Item has no loot type");
+            const planRes = await fetch(API_PLAN_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!planRes.ok) {
+                throw new Error(`Planning failed: ${planRes.status} ${planRes.statusText}`);
             }
 
-            // 1. Fetch Recommendation
-            const encodedName = encodeURIComponent(primaryObjective.name);
-            const recResponse = await fetch(`${API_RECOMMENDATION_URL}?itemName=${encodedName}`);
-            if (!recResponse.ok) {
-                throw new Error(`Failed to fetch recommendations: ${recResponse.status} ${recResponse.statusText}`);
-            }
-            const recs: MapRecommendation[] = await recResponse.json();
+            const plans: PlannerResponse[] = await planRes.json();
 
-            if (recs.length > 0) {
-                const recommendedMapName = recs[0].mapName;
+            if (plans.length > 0) {
+                const bestPlan = plans[0];
 
-                // 2. Fetch Map Data
-                const mapResponse = await fetch(`${API_MAP_DATA_URL}/${encodeURIComponent(recommendedMapName)}/data`);
-                if (!mapResponse.ok) {
-                    throw new Error(`Failed to fetch map data: ${mapResponse.status} ${mapResponse.statusText}`);
-                }
-                const mapJson = await mapResponse.json();
+                // 2. Update State with Result (Route Path)
+                setMapData({
+                    name: bestPlan.mapName,
+                    areas: bestPlan.routePath
+                });
 
-                setMapData(mapJson);
-
-                // 3. Generate Mock Stats based on result
+                // 3. Generate Stats
                 setStats({
-                    sectorName: recommendedMapName,
-                    environment: 'ARID CANYON', // Mock
+                    sectorName: bestPlan.mapName,
+                    environment: 'LIVE FIRE ZONE',
                     lootProbability: {
-                        rare: Math.floor(Math.random() * 30) + 20,
-                        epic: Math.floor(Math.random() * 15) + 5
+                        rare: Math.min(100, Math.max(0, Math.floor(bestPlan.score))),
+                        epic: 100
                     },
-                    threatLevel: ['LOW', 'MEDIUM', 'HIGH', 'EXTREME'][Math.floor(Math.random() * 4)]
+                    threatLevel: bestPlan.score < 0 ? 'EXTREME' : 'MEDIUM'
                 });
             } else {
-                alert("No suitable map found for this objective.");
+                alert("No viable route found for this objective.");
             }
 
         } catch (error) {
@@ -102,7 +104,7 @@ function App() {
 
     return (
         <div className="fixed inset-0 w-full h-full bg-retro-bg overflow-hidden flex">
-            {/* Global CRT Overlay (if not in accessibility mode) */}
+            {/* Global CRT Overlay */}
             <div className="absolute inset-0 crt-overlay pointer-events-none z-50"></div>
 
             {/* Sidebar (Left) */}
@@ -113,6 +115,11 @@ function App() {
                     onRemoveFromLoadout={handleRemoveFromLoadout}
                     onCalculate={handleCalculateRoute}
                     isCalculating={isCalculating}
+                    // Pass new props
+                    routingProfile={routingProfile}
+                    setRoutingProfile={setRoutingProfile}
+                    hasRaiderKey={hasRaiderKey}
+                    setHasRaiderKey={setHasRaiderKey}
                 />
             </div>
 
@@ -157,7 +164,11 @@ function App() {
 
                 {/* Bottom HUD */}
                 <div className="h-32 flex-shrink-0 z-40">
-                    <DataHUD stats={stats} />
+                    <DataHUD
+                        stats={stats}
+                        activeProfile={routingProfile}
+                        hoveredProfile={null}
+                    />
                 </div>
             </div>
         </div>

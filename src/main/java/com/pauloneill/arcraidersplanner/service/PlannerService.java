@@ -247,6 +247,7 @@ public class PlannerService {
         dto.setMapX(area.getMapX());
         dto.setMapY(area.getMapY());
         dto.setCoordinates(area.getCoordinates());
+        dto.setLootAbundance(area.getLootAbundance());
         if (area.getLootTypes() != null) {
             dto.setLootTypes(area.getLootTypes().stream().map(LootType::getName).collect(Collectors.toSet()));
         }

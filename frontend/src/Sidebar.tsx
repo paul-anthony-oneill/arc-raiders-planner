@@ -1,5 +1,6 @@
 import React from 'react';
 import ItemIndex from './ItemIndex';
+import { RoutingProfile } from './types';
 import type { Item } from './types';
 
 interface SidebarProps {
@@ -8,6 +9,12 @@ interface SidebarProps {
     onRemoveFromLoadout: (index: number) => void;
     onCalculate: () => void;
     isCalculating: boolean;
+
+    // New Controls
+    routingProfile: RoutingProfile;
+    setRoutingProfile: (mode: RoutingProfile) => void;
+    hasRaiderKey: boolean;
+    setHasRaiderKey: (hasKey: boolean) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -15,7 +22,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     loadout,
     onRemoveFromLoadout,
     onCalculate,
-    isCalculating
+    isCalculating,
+    routingProfile,
+    setRoutingProfile,
+    hasRaiderKey,
+    setHasRaiderKey
 }) => {
     return (
         <aside className="flex flex-col h-full border-r-2 border-retro-sand/20 bg-retro-dark/90 relative overflow-hidden">
@@ -28,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     Mission Control
                 </h2>
                 <div className="text-xs text-retro-sand-dim font-mono mt-1">
-                    SYS.VER.2.0.4 // READY
+                    SYS.VER.2.1.0 // TARGETING
                 </div>
             </div>
 
@@ -38,21 +49,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <h3 className="text-sm text-retro-sand font-bold mb-2 uppercase tracking-wider">
                         {'>'} Input Objectives
                     </h3>
-                    {/* Reusing ItemIndex but we might need to style it via CSS in index.css to fit better */}
                     <div className="opacity-90 transform scale-95 origin-top-left w-[105%]">
                         <ItemIndex onItemSelected={onAddToLoadout} />
                     </div>
                 </div>
             </div>
 
-            {/* Loadout List */}
+            {/* Loadout & Controls */}
             <div className="p-4 border-t border-retro-sand/20 bg-retro-black/50 z-20">
+                {/* Loadout List */}
                 <h3 className="text-sm text-retro-sand font-bold mb-3 uppercase tracking-wider flex justify-between items-center">
                     <span>{'>'} Loadout</span>
                     <span className="text-retro-orange">{loadout.length}/5</span>
                 </h3>
 
-                <div className="space-y-2 mb-4">
+                <div className="space-y-2 mb-4 max-h-32 overflow-y-auto custom-scrollbar">
                     {loadout.length === 0 && (
                         <div className="text-xs text-retro-sand-dim italic text-center py-4 border border-dashed border-retro-sand-dim/30">
                             NO OBJECTIVES SELECTED
@@ -69,6 +80,72 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </button>
                         </div>
                     ))}
+                </div>
+
+                {/* --- NEW: Routing Configuration --- */}
+                <div className="mb-4 border-t border-retro-sand/20 pt-4">
+                    <h3 className="text-xs text-retro-sand font-bold mb-2 uppercase tracking-wider">
+                        {'>'} Operational Mode
+                    </h3>
+
+                    <div className="space-y-2 text-sm font-mono text-retro-sand-dim">
+                        <label className="flex items-center gap-2 cursor-pointer hover:text-retro-sand">
+                            <input
+                                type="radio"
+                                name="routing"
+                                checked={routingProfile === RoutingProfile.PURE_SCAVENGER}
+                                onChange={() => setRoutingProfile(RoutingProfile.PURE_SCAVENGER)}
+                                className="accent-retro-orange"
+                            />
+                            Scavenger (Max Loot)
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer hover:text-retro-sand">
+                            <input
+                                type="radio"
+                                name="routing"
+                                checked={routingProfile === RoutingProfile.AVOID_PVP}
+                                onChange={() => setRoutingProfile(RoutingProfile.AVOID_PVP)}
+                                className="accent-retro-orange"
+                            />
+                            Stealth (Avoid PvP)
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer hover:text-retro-sand">
+                            <input
+                                type="radio"
+                                name="routing"
+                                checked={routingProfile === RoutingProfile.EASY_EXFIL}
+                                onChange={() => setRoutingProfile(RoutingProfile.EASY_EXFIL)}
+                                className="accent-retro-orange"
+                            />
+                            Exfil Priority
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer hover:text-retro-sand">
+                            <input
+                                type="radio"
+                                name="routing"
+                                checked={routingProfile === RoutingProfile.SAFE_EXFIL}
+                                onChange={() => setRoutingProfile(RoutingProfile.SAFE_EXFIL)}
+                                className="accent-retro-orange"
+                            />
+                            Safe Extraction (Mixed)
+                        </label>
+                    </div>
+
+                    {/* Raider Key Toggle */}
+                    <div className="mt-3 pt-2 border-t border-dashed border-retro-sand/20">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-retro-orange hover:text-retro-sand transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={hasRaiderKey}
+                                onChange={(e) => setHasRaiderKey(e.target.checked)}
+                                className="accent-retro-orange"
+                            />
+                            [KEYCARD] Raider Hatch Access
+                        </label>
+                    </div>
                 </div>
 
                 {/* Calculate Button */}

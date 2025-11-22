@@ -177,6 +177,68 @@ class PlannerServiceTest {
         assertTrue(response.get(0).score() > response.get(1).score());
     }
 
+    @Test
+    @DisplayName("SAFE EXFIL: Should combine PvP avoidance with close Raider Hatch")
+    void testSafeExfil_CombinesSafetyAndProximity() {
+        // Arrange
+        mockItem("Copper Wire", copperWire);
+
+        // Map A: "The Trap Map"
+        // Loot at (0,0) and (200,0). High Tier zone at (100,0). Close hatch at (220,0).
+        // Route crosses danger, but hatch is close.
+        GameMap mapA = new GameMap();
+        mapA.setId(1L);
+        mapA.setName("The Trap Map");
+        Area lootA1 = createArea(1L, 0, 0, 2, Set.of(industrial));
+        Area lootA2 = createArea(2L, 200, 0, 2, Set.of(industrial));
+        Area dangerA = createArea(99L, 100, 0, 1, Set.of()); // High Tier = Danger
+        mapA.setAreas(new HashSet<>(Arrays.asList(lootA1, lootA2, dangerA)));
+
+        // Map B: "The Safe Map"
+        // Loot at (0,0) and (200,200). Low Tier zone at (100,100). Hatch at (250,250).
+        // Safer route, slightly farther hatch.
+        GameMap mapB = new GameMap();
+        mapB.setId(2L);
+        mapB.setName("The Safe Map");
+        Area lootB1 = createArea(3L, 0, 0, 2, Set.of(industrial));
+        Area lootB2 = createArea(4L, 200, 200, 2, Set.of(industrial));
+        Area safeZone = createArea(98L, 100, 100, 3, Set.of()); // Low Tier = Safe
+        mapB.setAreas(new HashSet<>(Arrays.asList(lootB1, lootB2, safeZone)));
+
+        when(gameMapRepository.findAllWithAreas()).thenReturn(List.of(mapA, mapB));
+
+        // Mock Raider Hatches
+        MapMarker hatchA = new MapMarker();
+        hatchA.setCategory("Raider Hatch");
+        hatchA.setLat(0.0);
+        hatchA.setLng(220.0); // Close to loot end
+        hatchA.setName("Danger Hatch");
+
+        MapMarker hatchB = new MapMarker();
+        hatchB.setCategory("Raider Hatch");
+        hatchB.setLat(250.0);
+        hatchB.setLng(250.0); // Farther but safer
+        hatchB.setName("Safe Hatch");
+
+        when(mapMarkerRepository.findByGameMapId(1L)).thenReturn(List.of(hatchA));
+        when(mapMarkerRepository.findByGameMapId(2L)).thenReturn(List.of(hatchB));
+
+        PlannerRequestDto request = new PlannerRequestDto(
+                List.of("Copper Wire"), null, true, PlannerRequestDto.RoutingProfile.SAFE_EXFIL
+        );
+
+        // Act
+        List<PlannerResponseDto> response = plannerService.generateRoute(request);
+
+        // Assert
+        // Map B should win: It avoids danger (-200 penalty on Map A)
+        // even though hatch is slightly farther
+        assertEquals("The Safe Map", response.get(0).mapName());
+        assertEquals("Safe Hatch", response.get(0).extractionPoint());
+        assertTrue(response.get(0).score() > response.get(1).score(),
+                "Safe map should outrank dangerous map despite slightly farther hatch");
+    }
+
     // --- Helpers ---
     private void mockItem(String name, Item item) {
         when(itemRepository.findByName(name)).thenReturn(Optional.of(item));
