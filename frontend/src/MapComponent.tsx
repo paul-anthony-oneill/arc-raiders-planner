@@ -62,6 +62,7 @@ const MapComponent: React.FC<MapProps> = ({
     showRoutePath = true
 }) => {
     const bounds: L.LatLngBoundsLiteral = [[-1000, -1000], [1000, 1000]];
+    const maxBounds: L.LatLngBoundsLiteral = [[-1500, -1500], [1500, 1500]];
 
     const coordsToLatLng = (x: number, y: number): L.LatLngTuple => {
         return [y, x] as L.LatLngTuple;
@@ -104,15 +105,22 @@ const MapComponent: React.FC<MapProps> = ({
     };
 
     return (
-        <div style={{ height: '600px', width: '100%', border: '2px solid #ccc', borderRadius: '8px', overflow: 'hidden' }}>
+        <div style={{
+            height: '100%',
+            width: '100%',
+            position: 'relative',
+            backgroundColor: '#1a1a1a' // Dark background to match map edges
+        }}>
             <MapContainer
                 center={[0, 0]}
                 zoom={0}
-                minZoom={-2}
+                minZoom={-1}  // Limit zoom out (was -2, now less extreme)
                 maxZoom={2}
                 crs={L.CRS.Simple}
                 bounds={bounds}
-                style={{ height: '100%', width: '100%' }}
+                maxBounds={maxBounds}
+                maxBoundsViscosity={0.8}
+                style={{ height: '100%', width: '100%', backgroundColor: '#1a1a1a' }}
             >
                 <ImageOverlay
                     url={getMapImageUrl(mapName)}
@@ -256,9 +264,9 @@ const MapComponent: React.FC<MapProps> = ({
 
             {/* Legend */}
             <div style={{
-                position: 'relative',
-                marginTop: '-60px',
-                marginLeft: '20px',
+                position: 'absolute',
+                bottom: '20px',
+                left: '20px',
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 padding: '12px',
                 borderRadius: '8px',

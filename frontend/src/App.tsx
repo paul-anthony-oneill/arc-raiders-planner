@@ -14,6 +14,7 @@ function App() {
     const [loadout, setLoadout] = useState<Item[]>([]);
     const [isCalculating, setIsCalculating] = useState(false);
     const [mapData, setMapData] = useState<{ areas: Area[], name: string } | null>(null);
+    const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null); // NEW: Store route separately
     const [stats, setStats] = useState<any | null>(null);
     const [showEditor, setShowEditor] = useState(false);
     const [accessibilityMode, setAccessibilityMode] = useState(false);
@@ -69,11 +70,17 @@ function App() {
             if (plans.length > 0) {
                 const bestPlan = plans[0];
 
-                // 2. Update State with Result (Route Path)
-                setMapData({
-                    name: bestPlan.mapName,
-                    areas: bestPlan.routePath
-                });
+                // 2. Store the active route
+                setActiveRoute(bestPlan);
+
+                // 3. Fetch FULL map data (all areas, not just route)
+                const mapUrl = `/api/maps/${encodeURIComponent(bestPlan.mapName)}/data`;
+                const mapResponse = await fetch(mapUrl);
+                if (!mapResponse.ok) {
+                    throw new Error(`Failed to fetch map data: ${mapResponse.status}`);
+                }
+                const mapJson: { areas: Area[], name: string } = await mapResponse.json();
+                setMapData(mapJson);
 
                 // 3. Generate Stats
                 setStats({
@@ -153,6 +160,10 @@ function App() {
                             <MapComponent
                                 mapName={mapData.name}
                                 areas={mapData.areas}
+                                routePath={activeRoute?.routePath || []}
+                                extractionPoint={activeRoute?.extractionPoint}
+                                routingProfile={routingProfile}
+                                showRoutePath={true}
                             />
                         </div>
                     ) : (
