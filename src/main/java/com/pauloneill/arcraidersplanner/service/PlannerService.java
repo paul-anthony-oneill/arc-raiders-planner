@@ -113,33 +113,27 @@ public class PlannerService {
         List<Area> viableAreas = areas.stream().filter(a -> areaScores.get(a) > 0).toList();
         if (viableAreas.isEmpty()) return new RouteResult(-1000, Collections.emptyList(), null);
 
-        // --- ROUTE GENERATION (Greedy TSP) ---
-        Area current = viableAreas.stream().max(Comparator.comparingDouble(areaScores::get)).orElseThrow();
-        List<Area> path = new ArrayList<>();
-        List<Area> unvisited = new ArrayList<>(viableAreas);
+        // --- ROUTE GENERATION (Multi-Start Nearest Neighbor + 2-Opt) ---
+        List<Area> path = findOptimalRoute(viableAreas);
 
-        path.add(current);
-        unvisited.remove(current);
-        double totalScore = areaScores.get(current);
+        // Calculate score for the optimized path
+        double totalScore = 0;
+        for (int i = 0; i < path.size(); i++) {
+            Area current = path.get(i);
+            totalScore += areaScores.get(current);
 
-        while (!unvisited.isEmpty()) {
-            final Area startNode = current;
-            Area next = unvisited.stream()
-                    .min(Comparator.comparingDouble(a -> distance(startNode, a)))
-                    .orElseThrow();
-
-            // Check Safety for PvP Modes
-            if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
-                if (isRouteDangerous(startNode, next, dangerZones)) {
-                    totalScore -= 200; // Heavy penalty for crossing a High Tier zone
+            // Check Safety for PvP Modes when transitioning to next area
+            if (i < path.size() - 1) {
+                Area next = path.get(i + 1);
+                if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
+                    if (isRouteDangerous(current, next, dangerZones)) {
+                        totalScore -= 200; // Heavy penalty for crossing a High Tier zone
+                    }
                 }
             }
-
-            totalScore += areaScores.get(next);
-            current = next;
-            path.add(current);
-            unvisited.remove(current);
         }
+
+        Area current = path.get(path.size() - 1); // Last area for exfil calculation
 
         // --- EXFIL LOGIC (EASY_EXFIL & SAFE_EXFIL) ---
         String bestExit = null;
@@ -158,6 +152,122 @@ public class PlannerService {
         }
 
         return new RouteResult(totalScore, path, bestExit);
+    }
+
+    // --- ROUTE OPTIMIZATION HELPERS ---
+
+    /**
+     * Finds the optimal route using multi-start nearest-neighbor followed by 2-opt improvement.
+     * Tries starting from each area and picks the route with minimum total distance.
+     */
+    private List<Area> findOptimalRoute(List<Area> areas) {
+        if (areas.size() <= 2) return new ArrayList<>(areas);
+
+        List<Area> bestRoute = null;
+        double bestDistance = Double.MAX_VALUE;
+
+        // Try starting from each area
+        for (Area startArea : areas) {
+            List<Area> route = nearestNeighborRoute(startArea, areas);
+            double totalDistance = calculateTotalDistance(route);
+
+            if (totalDistance < bestDistance) {
+                bestDistance = totalDistance;
+                bestRoute = route;
+            }
+        }
+
+        // Apply 2-opt optimization to eliminate crossings
+        return twoOptImprove(bestRoute);
+    }
+
+    /**
+     * Constructs a route using nearest-neighbor heuristic starting from a specific area.
+     */
+    private List<Area> nearestNeighborRoute(Area start, List<Area> allAreas) {
+        List<Area> route = new ArrayList<>();
+        Set<Area> unvisited = new HashSet<>(allAreas);
+
+        Area current = start;
+        route.add(current);
+        unvisited.remove(current);
+
+        while (!unvisited.isEmpty()) {
+            final Area from = current;
+            Area nearest = unvisited.stream()
+                    .min(Comparator.comparingDouble(a -> distance(from, a)))
+                    .orElseThrow();
+
+            route.add(nearest);
+            unvisited.remove(nearest);
+            current = nearest;
+        }
+
+        return route;
+    }
+
+    /**
+     * Calculates total Euclidean distance for a route.
+     */
+    private double calculateTotalDistance(List<Area> route) {
+        double total = 0;
+        for (int i = 0; i < route.size() - 1; i++) {
+            total += distance(route.get(i), route.get(i + 1));
+        }
+        return total;
+    }
+
+    /**
+     * Improves route using 2-opt algorithm to eliminate edge crossings.
+     * Iteratively swaps edge pairs if it reduces total distance.
+     */
+    private List<Area> twoOptImprove(List<Area> route) {
+        if (route.size() <= 3) return route;
+
+        List<Area> improved = new ArrayList<>(route);
+        boolean foundImprovement = true;
+
+        while (foundImprovement) {
+            foundImprovement = false;
+
+            for (int i = 0; i < improved.size() - 2; i++) {
+                for (int j = i + 2; j < improved.size(); j++) {
+                    // Skip adjacent edges
+                    if (j == improved.size() - 1 && i == 0) continue;
+
+                    // Calculate current distance: i→(i+1) and j→(j+1)
+                    double currentDist = distance(improved.get(i), improved.get(i + 1));
+                    if (j < improved.size() - 1) {
+                        currentDist += distance(improved.get(j), improved.get(j + 1));
+                    }
+
+                    // Calculate swapped distance: i→j and (i+1)→(j+1)
+                    double swappedDist = distance(improved.get(i), improved.get(j));
+                    if (j < improved.size() - 1) {
+                        swappedDist += distance(improved.get(i + 1), improved.get(j + 1));
+                    }
+
+                    // If swap reduces distance, reverse the segment
+                    if (swappedDist < currentDist) {
+                        // Reverse segment from (i+1) to j
+                        List<Area> newRoute = new ArrayList<>(improved.subList(0, i + 1));
+                        List<Area> reversed = new ArrayList<>(improved.subList(i + 1, j + 1));
+                        Collections.reverse(reversed);
+                        newRoute.addAll(reversed);
+                        if (j + 1 < improved.size()) {
+                            newRoute.addAll(improved.subList(j + 1, improved.size()));
+                        }
+
+                        improved = newRoute;
+                        foundImprovement = true;
+                        break;
+                    }
+                }
+                if (foundImprovement) break;
+            }
+        }
+
+        return improved;
     }
 
     // --- HELPERS ---
