@@ -1,5 +1,25 @@
 import L from 'leaflet';
-import type { Area } from '../types';
+
+// --- TYPES for Map Editor and Calibration ---
+export interface GameMap {
+    id: number;
+    name: string;
+    description: string;
+    calibrationScaleX?: number;
+    calibrationScaleY?: number;
+    calibrationOffsetX?: number;
+    calibrationOffsetY?: number;
+}
+
+export interface GameMarker {
+    id: string;
+    lat: number;
+    lng: number;
+    category: string;
+    subcategory: string;
+    name: string;
+    description: string;
+}
 
 // 1. Standardize Map Image URL generation
 export const getMapImageUrl = (mapName: string): string => {
@@ -24,3 +44,16 @@ export const parseAreaCoordinates = (coordinateString?: string): L.LatLngExpress
 export const gameCoordsToLatLng = (x: number, y: number): L.LatLngTuple => {
     return [y, x] as L.LatLngTuple;
 };
+
+// --- HELPER: Transform Coordinates ---
+export const transformMarker = (marker: GameMarker, map: GameMap): L.LatLngTuple => {
+        const scaleX = map.calibrationScaleX ?? 1.0;
+        const scaleY = map.calibrationScaleY ?? 1.0;
+        const offsetX = map.calibrationOffsetX ?? 0.0;
+        const offsetY = map.calibrationOffsetY ?? 0.0;
+
+        const localX = (marker.lng * scaleX) + offsetX;
+        const localY = (marker.lat * scaleY) + offsetY;
+
+        return [localY, localX] as L.LatLngTuple;
+    };

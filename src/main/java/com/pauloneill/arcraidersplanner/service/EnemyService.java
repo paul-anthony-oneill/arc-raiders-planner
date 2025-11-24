@@ -12,7 +12,8 @@ import java.util.Set;
 
 /**
  * Service for managing ARC enemy data.
- * WHY: Players need to search and target specific enemy types for farming and quest completion
+ * WHY: Players need to search and target specific enemy types for farming and
+ * quest completion
  */
 @Service
 @Transactional(readOnly = true)
@@ -21,14 +22,18 @@ public class EnemyService {
     private static final String ARC_CATEGORY = "arc";
 
     /**
-     * Small flying enemies with dynamic spawns that should be excluded from targeting.
-     * WHY: These enemies are plentiful and spawn dynamically, making targeted routing unnecessary
+     * Larger enemies that should be included in targeting.
+     * WHY: These enemies are higher value with specific spawns and specifically
+     * required loot drops
      */
-    private static final Set<String> EXCLUDED_SMALL_FLYING_ENEMIES = Set.of(
-            "wasp",
-            "hornet",
-            "snitch"
-    );
+    private static final Set<String> INCLUDED_ENEMIES = Set.of(
+            "queen",
+            "leaper",
+            "rocketeer",
+            "sentinel",
+            "bastion",
+            "bombardier",
+            "matriarch");
 
     private final MapMarkerRepository mapMarkerRepository;
 
@@ -102,7 +107,8 @@ public class EnemyService {
     }
 
     /**
-     * Gets distinct ARC enemy types available for targeting (excludes small flying enemies).
+     * Gets distinct ARC enemy types available for targeting (excludes small flying
+     * enemies).
      * WHY: Players select enemy types (e.g., "Sentinel"), not specific spawns
      *
      * @return List of selectable enemy type names
@@ -112,7 +118,7 @@ public class EnemyService {
 
         return allEnemies.stream()
                 .map(MapMarker::getSubcategory)
-                .filter(type -> type != null && !EXCLUDED_SMALL_FLYING_ENEMIES.contains(type.toLowerCase()))
+                .filter(type -> type != null && INCLUDED_ENEMIES.contains(type.toLowerCase()))
                 .distinct()
                 .sorted()
                 .toList();
@@ -120,7 +126,8 @@ public class EnemyService {
 
     /**
      * Gets all spawns of specified enemy types.
-     * WHY: Route planning needs to find spawns of selected enemy types near loot areas
+     * WHY: Route planning needs to find spawns of selected enemy types near loot
+     * areas
      *
      * @param types List of enemy type names (subcategories)
      * @return List of MapMarker entities matching any of the specified types
@@ -139,7 +146,7 @@ public class EnemyService {
 
         return allEnemies.stream()
                 .filter(marker -> marker.getSubcategory() != null &&
-                                 typesLower.contains(marker.getSubcategory().toLowerCase()))
+                        typesLower.contains(marker.getSubcategory().toLowerCase()))
                 .toList();
     }
 
@@ -158,7 +165,7 @@ public class EnemyService {
                 marker.getGameMap().getName(),
                 marker.getLat(),
                 marker.getLng(),
-                null  // FUTURE: Calculate threat level based on enemy type
+                null // FUTURE: Calculate threat level based on enemy type
         );
     }
 }

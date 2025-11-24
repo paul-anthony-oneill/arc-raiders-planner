@@ -5,6 +5,7 @@ import MapComponent from './MapComponent';
 
 const API_PLANNER_URL = '/api/planner';
 const API_MAP_DATA_URL = '/api/maps';
+const API_ENEMY_TYPES_URL = '/api/enemies/types';
 
 interface PlannerProps {
     selectedItem: Item;
@@ -22,6 +23,25 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
     const [routingProfile, setRoutingProfile] = useState<RoutingProfile>('PURE_SCAVENGER');
     const [showRoutePath, setShowRoutePath] = useState<boolean>(true);
 
+    // New state for enemy targeting
+    const [availableEnemies, setAvailableEnemies] = useState<string[]>([]);
+    const [targetEnemies, setTargetEnemies] = useState<string[]>([]);
+
+    // Fetch available enemy types on mount
+    useEffect(() => {
+        const fetchEnemyTypes = async () => {
+            try {
+                const response = await fetch(API_ENEMY_TYPES_URL);
+                const enemyTypes: string[] = await response.json();
+                setAvailableEnemies(enemyTypes);
+            } catch (err) {
+                console.error('Failed to fetch enemy types:', err);
+                // Non-critical, so we don't set a user-facing error
+            }
+        };
+        fetchEnemyTypes();
+    }, []);
+
     // Smart defaults: Update routing profile based on Raider Key status
     useEffect(() => {
         if (!hasRaiderKey && (routingProfile === 'EASY_EXFIL' || routingProfile === 'SAFE_EXFIL')) {
@@ -35,9 +55,10 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
             setError(null);
             setMapData(null);
 
-            if (!selectedItem.lootType) {
-                setError(`${selectedItem.name} is only obtained via crafting or enemy drops.`);
+            if (!selectedItem.lootType && targetEnemies.length === 0) {
+                setError(`${selectedItem.name} is only obtained via crafting or enemy drops, and no enemy target is selected.`);
                 setLoading(false);
+                setRecommendations([]);
                 return;
             }
 
@@ -47,7 +68,8 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        targetItemNames: [selectedItem.name],
+                        targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
+                        targetEnemyTypes: targetEnemies,
                         hasRaiderKey,
                         routingProfile
                     })
@@ -75,7 +97,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
         };
 
         fetchPlannerData();
-    }, [selectedItem, hasRaiderKey, routingProfile]);
+    }, [selectedItem, hasRaiderKey, routingProfile, targetEnemies]);
 
     // Profile descriptions for help text
     const profileDescriptions: Record<RoutingProfile, string> = {
@@ -150,6 +172,34 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
                     </p>
                 </div>
 
+                <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 'bold' }}>
+                        🎯 Targeted Enemies:
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        {availableEnemies.map(enemy => (
+                            <label key={enemy} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', backgroundColor: targetEnemies.includes(enemy) ? '#e0f7fa' : '#fff', border: '1px solid #ccc', borderRadius: '16px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={targetEnemies.includes(enemy)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setTargetEnemies([...targetEnemies, enemy]);
+                                        } else {
+                                            setTargetEnemies(targetEnemies.filter(t => t !== enemy));
+                                        }
+                                    }}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                {enemy.charAt(0).toUpperCase() + enemy.slice(1)}
+                            </label>
+                        ))}
+                    </div>
+                    <p style={{ marginTop: '8px', fontSize: '14px', color: '#666', fontStyle: 'italic' }}>
+                        Select high-value enemies to include in route planning. The route will be scored based on proximity to these targets.
+                    </p>
+                </div>
+
                 <div>
                     <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px', cursor: 'pointer' }}>
                         <input
@@ -208,6 +258,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
                             extractionPoint={recommendations[0].extractionPoint}
                             routingProfile={routingProfile}
                             showRoutePath={showRoutePath}
+                            enemySpawns={recommendations[0].nearbyEnemySpawns}
                         />
                     )}
                 </>

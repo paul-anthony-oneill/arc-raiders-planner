@@ -3,27 +3,7 @@ import { CircleMarker, ImageOverlay, MapContainer, Polygon, Polyline, Popup, use
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Area } from './types';
-
-// --- TYPES ---
-interface GameMap {
-    id: number;
-    name: string;
-    description: string;
-    calibrationScaleX?: number;
-    calibrationScaleY?: number;
-    calibrationOffsetX?: number;
-    calibrationOffsetY?: number;
-}
-
-interface GameMarker {
-    id: string;
-    lat: number;
-    lng: number;
-    category: string;
-    subcategory: string;
-    name: string;
-    description: string;
-}
+import { GameMap, GameMarker, transformMarker } from "./utils/mapUtils";
 
 interface MapEditorProps {
     onExit: () => void;
@@ -90,46 +70,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
     const [lootAbundance, setLootAbundance] = useState<number>(2);
     const [generatedCode, setGeneratedCode] = useState('');
 
-    // --- HELPER: Transform Coordinates ---
-    const transformMarker = (marker: GameMarker, map: GameMap): L.LatLngTuple => {
-        const scaleX = map.calibrationScaleX ?? 1.0;
-        const scaleY = map.calibrationScaleY ?? 1.0;
-        const offsetX = map.calibrationOffsetX ?? 0.0;
-        const offsetY = map.calibrationOffsetY ?? 0.0;
 
-        // DEBUG LOG (Check your console!)
-        if (marker.name === "a-symbol-of-unification" || Math.random() < 0.01) {
-            console.log("Transforming Marker:", {
-                mapName: map.name,
-                scaleX, offsetX,
-                originalLng: marker.lng,
-                calculatedX: (marker.lng * scaleX) + offsetX
-            });
-        }
-
-        const localX = (marker.lng * scaleX) + offsetX;
-        const localY = (marker.lat * scaleY) + offsetY;
-
-        return [localY, localX] as L.LatLngTuple;
-    };
-
-    // --- INITIAL LOAD ---
-    useEffect(() => {
-        const loadMapsAndAreas = async () => {
-            try {
-                const res = await fetch('/api/maps');
-                const mapData: GameMap[] = await res.json();
-                setMaps(mapData);
-
-                if (mapData.length > 0) {
-                    handleMapSelect(mapData[0].name, mapData);
-                }
-            } catch (err) {
-                console.error("Initialization error:", err);
-            }
-        };
-        loadMapsAndAreas();
-    }, []);
 
     // --- HANDLERS ---
     const handleMapSelect = async (mapName: string, currentMaps: GameMap[] = maps) => {
@@ -162,6 +103,24 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
             }
         }
     };
+
+    // --- INITIAL LOAD ---
+    useEffect(() => {
+        const loadMapsAndAreas = async () => {
+            try {
+                const res = await fetch('/api/maps');
+                const mapData: GameMap[] = await res.json();
+                setMaps(mapData);
+
+                if (mapData.length > 0) {
+                    handleMapSelect(mapData[0].name, mapData);
+                }
+            } catch (err) {
+                console.error("Initialization error:", err);
+            }
+        };
+        loadMapsAndAreas();
+    }, []);
 
     // --- CALIBRATION HANDLERS (4-Point Logic) ---
     const handleCalibrationClick = (latlng: L.LatLng) => {
