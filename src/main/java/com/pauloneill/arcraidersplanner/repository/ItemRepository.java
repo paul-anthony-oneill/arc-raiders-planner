@@ -9,5 +9,7 @@ import java.util.Optional;
 public interface ItemRepository extends JpaRepository<Item, Long> {
     Optional<Item> findByName(String name);
 
-    List<Item> findByNameContainingIgnoreCase(String searchTerm);
+    List<Item> findByNameContainingIgnoreCase(String name);
+
+    List<Item> findTop50ByOrderByNameAsc();
 }

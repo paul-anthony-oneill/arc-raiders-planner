@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type {Item} from './types';
+import type { Item } from './types';
 
 const API_BASE_URL = '/api/items';
 interface ItemIndexProps {
@@ -37,9 +37,11 @@ const ItemIndex: React.FC<ItemIndexProps> = ({ onItemSelected }) => {
         return () => clearTimeout(delaySearch);
     }, [searchTerm]);
 
+    const visibleItems = items.filter(item => item.lootType !== null);
+
     return (
         <div className="item-index-container" style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-            <h2>ARC Raiders Item Index ({items.length} Total)</h2>
+            <h2>ARC Raiders Item Index ({visibleItems.length} Total)</h2>
             <input
                 type="text"
                 placeholder="Search items (e.g., circuit, gear)..."
@@ -50,13 +52,13 @@ const ItemIndex: React.FC<ItemIndexProps> = ({ onItemSelected }) => {
 
             {error && <p style={{ color: 'red' }}>Error: {error}</p>}
 
-            {loading && items.length === 0 && !error && (
+            {loading && visibleItems.length === 0 && !error && (
                 <p>Loading items from backend...</p>
             )}
 
             <div className="item-list" style={{ maxHeight: '60vh', overflowY: 'auto', border: '1px solid #ccc', padding: '10px' }}>
-                {items.length > 0 ? (
-                    items.map((item) => (
+                {visibleItems.length > 0 ? (
+                    visibleItems.map((item) => (
                         <div
                             key={item.id}
                             className="item-card"
@@ -71,7 +73,7 @@ const ItemIndex: React.FC<ItemIndexProps> = ({ onItemSelected }) => {
                                 cursor: 'pointer'
                             }}
                         >
-                            <div className="item-icon-container"> {}
+                            <div className="item-icon-container"> { }
                                 <img
                                     src={item.iconUrl || 'placeholder.webp'}
                                     alt={item.name}
