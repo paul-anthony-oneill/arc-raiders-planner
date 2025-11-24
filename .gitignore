@@ -9,6 +9,10 @@ CLAUDE.md
 requirements/
 docs/
 
+### Gemini ###
+.gemini/
+GEMINI.md
+
 ### STS ###
 .apt_generated
 .classpath
