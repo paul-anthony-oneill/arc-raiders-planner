@@ -1,57 +1,50 @@
-import React from "react";
-import {
-  ImageOverlay,
-  MapContainer,
-  Marker,
-  Polygon,
-  Polyline,
-  Popup,
-} from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import type { Area, EnemySpawn, RoutingProfile } from "./types";
+import React from 'react'
+import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import type { Area, EnemySpawn, RoutingProfile } from './types'
+import { transformEnemyMarker, gameCoordsToLatLng, type GameMap } from './utils/mapUtils'
+import L from 'leaflet'
 
 interface MapProps {
-  mapName: string;
-  areas: Area[];
-  routePath?: Area[];
-  extractionPoint?: string;
-  routingProfile?: RoutingProfile;
-  showRoutePath?: boolean;
-  enemySpawns?: EnemySpawn[];
+    mapName: string
+    areas: Area[]
+    routePath?: Area[]
+    extractionPoint?: string
+    routingProfile?: RoutingProfile
+    showRoutePath?: boolean
+    enemySpawns?: EnemySpawn[]
+    gameMap?: GameMap | null
 }
 
 // Custom icon setup
 const defaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
 
 // Green flag icon for extraction points
 const exitIcon = L.icon({
-  iconUrl:
-    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJncmVlbiI+PHBhdGggZD0iTTUgMjFWNGgyTDEzIDhsLTYgNGg2bC02IDR2NXoiLz48L3N2Zz4=",
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40],
-});
+    iconUrl:
+        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJncmVlbiI+PHBhdGggZD0iTTUgMjFWNGgyTDEzIDhsLTYgNGg2bC02IDR2NXoiLz48L3N2Zz4=',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+})
 
 // Create enemy icon based on whether it's on route or not
 const createEnemyIcon = (onRoute: boolean) => {
-  const bgColor = onRoute ? "#f44336" : "#9e9e9e";
-  const borderColor = onRoute ? "#ff8a80" : "#bdbdbd";
-  const shadow = onRoute
-    ? "0 3px 8px rgba(244, 67, 54, 0.6)"
-    : "0 2px 4px rgba(0, 0, 0, 0.3)";
-  const size = onRoute ? 36 : 28;
-  const fontSize = onRoute ? 20 : 16;
+    const bgColor = onRoute ? '#f44336' : '#9e9e9e'
+    const borderColor = onRoute ? '#ff8a80' : '#bdbdbd'
+    const shadow = onRoute ? '0 3px 8px rgba(244, 67, 54, 0.6)' : '0 2px 4px rgba(0, 0, 0, 0.3)'
+    const size = onRoute ? 36 : 28
+    const fontSize = onRoute ? 20 : 16
 
-  return L.divIcon({
-    className: "enemy-marker",
-    html: `<div style="
+    return L.divIcon({
+        className: 'enemy-marker',
+        html: `<div style="
             background-color: ${bgColor};
             color: white;
             font-weight: bold;
@@ -66,18 +59,18 @@ const createEnemyIcon = (onRoute: boolean) => {
             box-shadow: ${shadow};
             opacity: ${onRoute ? 1 : 0.6};
         ">⚡</div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -(size / 2)],
-  });
-};
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -(size / 2)],
+    })
+}
 
 // Create numbered DivIcon for route sequence
 const createNumberedIcon = (number: number, isDanger: boolean = false) => {
-  return L.divIcon({
-    className: "numbered-marker",
-    html: `<div style="
-            background-color: ${isDanger ? "#ff4444" : "#4CAF50"};
+    return L.divIcon({
+        className: 'numbered-marker',
+        html: `<div style="
+            background-color: ${isDanger ? '#ff4444' : '#4CAF50'};
             color: white;
             font-weight: bold;
             font-size: 16px;
@@ -90,341 +83,319 @@ const createNumberedIcon = (number: number, isDanger: boolean = false) => {
             border: 3px solid white;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         ">${number}</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-  });
-};
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+    })
+}
 
 const MapComponent: React.FC<MapProps> = ({
-  mapName,
-  areas,
-  routePath = [],
-  extractionPoint,
-  routingProfile,
-  showRoutePath = true,
-  enemySpawns = [],
+    mapName,
+    areas,
+    routePath = [],
+    extractionPoint,
+    routingProfile,
+    showRoutePath = true,
+    enemySpawns = [],
+    gameMap,
 }) => {
-  const bounds: L.LatLngBoundsLiteral = [
-    [-1000, -1000],
-    [1000, 1000],
-  ];
-  const maxBounds: L.LatLngBoundsLiteral = [
-    [-1500, -1500],
-    [1500, 1500],
-  ];
+    const bounds: L.LatLngBoundsLiteral = [
+        [-1000, -1000],
+        [1000, 1000],
+    ]
+    const maxBounds: L.LatLngBoundsLiteral = [
+        [-1500, -1500],
+        [1500, 1500],
+    ]
 
-  const coordsToLatLng = (x: number, y: number): L.LatLngTuple => {
-    return [y, x] as L.LatLngTuple;
-  };
+    const coordsToLatLng = (x: number, y: number): L.LatLngTuple => {
+        return [y, x] as L.LatLngTuple
+    }
 
-  const getMapImageUrl = (name: string) => {
-    const filename = name.toLowerCase().replace(/ /g, "_");
-    return `/maps/${filename}.png`;
-  };
+    const getMapImageUrl = (name: string) => {
+        const filename = name.toLowerCase().replace(/ /g, '_')
+        return `/maps/${filename}.png`
+    }
 
-  // Determine if we should show danger zones
-  const showDangerZones =
-    routingProfile === "AVOID_PVP" || routingProfile === "SAFE_EXFIL";
+    // Determine if we should show danger zones
+    const showDangerZones = routingProfile === 'AVOID_PVP' || routingProfile === 'SAFE_EXFIL'
 
-  // Filter danger zones (lootAbundance === 1)
-  const dangerZones = showDangerZones
-    ? areas.filter((area) => area.lootAbundance === 1)
-    : [];
+    // Filter danger zones (lootAbundance === 1)
+    const dangerZones = showDangerZones ? areas.filter((area) => area.lootAbundance === 1) : []
 
-  // Get route path coordinates for polyline
-  const routePathCoords: L.LatLngExpression[] = routePath.map((area) =>
-    coordsToLatLng(area.mapX, area.mapY),
-  );
+    // Get route path coordinates for polyline
+    const routePathCoords: L.LatLngExpression[] = routePath.map((area) => coordsToLatLng(area.mapX, area.mapY))
 
-  // Find extraction point coordinates (if exists)
-  let extractionCoords: L.LatLngTuple | null = null;
-  if (extractionPoint && routePath.length > 0) {
-    // Use last area in route as approximate extraction location
-    const lastArea = routePath[routePath.length - 1];
-    extractionCoords = coordsToLatLng(lastArea.mapX, lastArea.mapY);
-  }
+    // Find extraction point coordinates (if exists)
+    let extractionCoords: L.LatLngTuple | null = null
+    if (extractionPoint && routePath.length > 0) {
+        // Use last area in route as approximate extraction location
+        const lastArea = routePath[routePath.length - 1]
+        extractionCoords = coordsToLatLng(lastArea.mapX, lastArea.mapY)
+    }
 
-  // Check if an area is in the route
-  const isInRoute = (areaId: number) => {
-    return routePath.some((a) => a.id === areaId);
-  };
+    // Check if an area is in the route
+    const isInRoute = (areaId: number) => {
+        return routePath.some((a) => a.id === areaId)
+    }
 
-  // Get route index for an area
-  const getRouteIndex = (areaId: number) => {
-    return routePath.findIndex((a) => a.id === areaId);
-  };
+    // Get route index for an area
+    const getRouteIndex = (areaId: number) => {
+        return routePath.findIndex((a) => a.id === areaId)
+    }
 
-  return (
-    <div
-      style={{
-        height: "100%",
-        width: "100%",
-        position: "relative",
-        backgroundColor: "#1a1a1a", // Dark background to match map edges
-      }}
-    >
-      <MapContainer
-        center={[0, 0]}
-        zoom={0}
-        minZoom={-1} // Limit zoom out (was -2, now less extreme)
-        maxZoom={2}
-        crs={L.CRS.Simple}
-        bounds={bounds}
-        maxBounds={maxBounds}
-        maxBoundsViscosity={0.8}
-        style={{ height: "100%", width: "100%", backgroundColor: "#1a1a1a" }}
-      >
-        <ImageOverlay
-          url={getMapImageUrl(mapName)}
-          bounds={bounds}
-          attribution="&copy; Embark Studios"
-        />
-
-        {/* Render danger zones first (bottom layer) */}
-        {dangerZones.map((area) => {
-          let polygonPositions: L.LatLngExpression[] | null = null;
-
-          if (area.coordinates) {
-            try {
-              polygonPositions = JSON.parse(area.coordinates);
-            } catch (e) {
-              console.error(
-                `Failed to parse coordinates for area ${area.name}`,
-                e,
-              );
-            }
-          }
-
-          return polygonPositions ? (
-            <Polygon
-              key={`danger-${area.id}`}
-              positions={polygonPositions}
-              pathOptions={{
-                color: "#ff0000",
-                fillColor: "#ff0000",
-                fillOpacity: 0.3,
-                weight: 3,
-                dashArray: "10, 5",
-              }}
-            >
-              <Popup>
-                <strong>⚠️ DANGER ZONE</strong>
-                <br />
-                <strong>{area.name}</strong>
-                <br />
-                High Traffic Area - Avoid!
-              </Popup>
-            </Polygon>
-          ) : null;
-        })}
-
-        {/* Render route path polyline */}
-        {showRoutePath && routePathCoords.length > 1 && (
-          <Polyline
-            positions={routePathCoords}
-            pathOptions={{
-              color: "#2196F3",
-              weight: 4,
-              opacity: 0.8,
-              dashArray: showDangerZones ? "10, 5" : undefined,
-            }}
-          />
-        )}
-
-        {/* Render all areas */}
-        {areas.map((area) => {
-          let polygonPositions: L.LatLngExpression[] | null = null;
-
-          if (area.coordinates) {
-            try {
-              polygonPositions = JSON.parse(area.coordinates);
-            } catch (e) {
-              console.error(
-                `Failed to parse coordinates for area ${area.name}`,
-                e,
-              );
-            }
-          }
-
-          const inRoute = isInRoute(area.id);
-          const routeIndex = getRouteIndex(area.id);
-          const isDanger = area.lootAbundance === 1;
-
-          // Skip rendering polygon if it's a danger zone (already rendered)
-          if (isDanger && showDangerZones) {
-            return null;
-          }
-
-          return (
-            <React.Fragment key={area.id}>
-              {/* Draw the Polygon if coordinates exist */}
-              {polygonPositions && (
-                <Polygon
-                  positions={polygonPositions}
-                  pathOptions={{
-                    color: inRoute ? "#4CAF50" : "#cccccc",
-                    fillColor: inRoute ? "#4CAF50" : "#cccccc",
-                    fillOpacity: inRoute ? 0.4 : 0.1,
-                    weight: inRoute ? 3 : 1,
-                  }}
-                >
-                  <Popup>
-                    <strong>{area.name}</strong>
-                    <br />
-                    {area.lootTypes && area.lootTypes.length > 0 && (
-                      <>
-                        Types: {area.lootTypes.join(", ")}
-                        <br />
-                      </>
-                    )}
-                    {inRoute && (
-                      <>
-                        <strong>Route Position: #{routeIndex + 1}</strong>
-                      </>
-                    )}
-                  </Popup>
-                </Polygon>
-              )}
-
-              {/* Draw numbered marker for areas in route */}
-              {inRoute ? (
-                <Marker
-                  position={coordsToLatLng(area.mapX || 0, area.mapY || 0)}
-                  icon={createNumberedIcon(routeIndex + 1, isDanger)}
-                >
-                  <Popup>
-                    <strong>
-                      Stop #{routeIndex + 1}: {area.name}
-                    </strong>
-                    <br />
-                    {area.lootTypes && area.lootTypes.length > 0 && (
-                      <>Types: {area.lootTypes.join(", ")}</>
-                    )}
-                  </Popup>
-                </Marker>
-              ) : (
-                <Marker
-                  position={coordsToLatLng(area.mapX || 0, area.mapY || 0)}
-                  icon={defaultIcon}
-                >
-                  <Popup>
-                    <strong>{area.name}</strong>
-                    <br />
-                    {area.lootTypes && area.lootTypes.length > 0 && (
-                      <>Types: {area.lootTypes.join(", ")}</>
-                    )}
-                  </Popup>
-                </Marker>
-              )}
-            </React.Fragment>
-          );
-        })}
-
-        {/* Render extraction point marker */}
-        {extractionPoint && extractionCoords && (
-          <Marker position={extractionCoords} icon={exitIcon}>
-            <Popup>
-              <strong>🚪 EXTRACTION POINT</strong>
-              <br />
-              {extractionPoint}
-            </Popup>
-          </Marker>
-        )}
-
-        {/* Render enemy spawn markers */}
-        {enemySpawns.map((spawn) => (
-          <Marker
-            key={spawn.id}
-            position={coordsToLatLng(spawn.lng, spawn.lat)}
-            icon={createEnemyIcon(spawn.onRoute)}
-          >
-            <Popup>
-              <strong>⚡ {spawn.onRoute ? "ON ROUTE" : "OFF ROUTE"}</strong>
-              <br />
-              <strong>
-                {spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}
-              </strong>
-              <br />
-              {spawn.distanceToRoute !== null &&
-                spawn.distanceToRoute !== undefined && (
-                  <>
-                    Distance to route: {Math.round(spawn.distanceToRoute)} units
-                    <br />
-                  </>
-                )}
-              {spawn.onRoute && (
-                <span style={{ color: "#4CAF50", fontWeight: "bold" }}>
-                  ✓ Near your route
-                </span>
-              )}
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-
-      {/* Legend */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          left: "20px",
-          backgroundColor: "rgba(255, 255, 255, 0.95)",
-          padding: "12px",
-          borderRadius: "8px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-          maxWidth: "250px",
-          zIndex: 1000,
-          fontSize: "13px",
-        }}
-      >
-        <div style={{ fontWeight: "bold", marginBottom: "8px" }}>
-          Map Legend
-        </div>
+    return (
         <div
-          style={{ display: "flex", alignItems: "center", marginBottom: "6px" }}
+            style={{
+                height: '100%',
+                width: '100%',
+                position: 'relative',
+                backgroundColor: '#1a1a1a', // Dark background to match map edges
+            }}
         >
-          <div
-            style={{
-              width: "20px",
-              height: "20px",
-              backgroundColor: "#4CAF50",
-              border: "2px solid white",
-              borderRadius: "50%",
-              marginRight: "8px",
-            }}
-          ></div>
-          <span>Route stops</span>
-        </div>
-        {showDangerZones && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginBottom: "6px",
-            }}
-          >
-            <div
-              style={{
-                width: "20px",
-                height: "20px",
-                backgroundColor: "#ff0000",
-                opacity: 0.5,
-                border: "2px dashed #ff0000",
-                marginRight: "8px",
-              }}
-            ></div>
-            <span>Danger zones</span>
-          </div>
-        )}
-        {extractionPoint && (
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: "20px", marginRight: "8px" }}>🚩</span>
-            <span>Extraction point</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+            <MapContainer
+                center={[0, 0]}
+                zoom={0}
+                minZoom={-1} // Limit zoom out (was -2, now less extreme)
+                maxZoom={2}
+                crs={L.CRS.Simple}
+                bounds={bounds}
+                maxBounds={maxBounds}
+                maxBoundsViscosity={0.8}
+                style={{ height: '100%', width: '100%', backgroundColor: '#1a1a1a' }}
+            >
+                <ImageOverlay url={getMapImageUrl(mapName)} bounds={bounds} attribution="&copy; Embark Studios" />
 
-export default MapComponent;
+                {/* Render danger zones first (bottom layer) */}
+                {dangerZones.map((area) => {
+                    let polygonPositions: L.LatLngExpression[] | null = null
+
+                    if (area.coordinates) {
+                        try {
+                            polygonPositions = JSON.parse(area.coordinates)
+                        } catch (e) {
+                            console.error(`Failed to parse coordinates for area ${area.name}`, e)
+                        }
+                    }
+
+                    return polygonPositions ? (
+                        <Polygon
+                            key={`danger-${area.id}`}
+                            positions={polygonPositions}
+                            pathOptions={{
+                                color: '#ff0000',
+                                fillColor: '#ff0000',
+                                fillOpacity: 0.3,
+                                weight: 3,
+                                dashArray: '10, 5',
+                            }}
+                        >
+                            <Popup>
+                                <strong>⚠️ DANGER ZONE</strong>
+                                <br />
+                                <strong>{area.name}</strong>
+                                <br />
+                                High Traffic Area - Avoid!
+                            </Popup>
+                        </Polygon>
+                    ) : null
+                })}
+
+                {/* Render route path polyline */}
+                {showRoutePath && routePathCoords.length > 1 && (
+                    <Polyline
+                        positions={routePathCoords}
+                        pathOptions={{
+                            color: '#2196F3',
+                            weight: 4,
+                            opacity: 0.8,
+                            dashArray: showDangerZones ? '10, 5' : undefined,
+                        }}
+                    />
+                )}
+
+                {/* Render all areas */}
+                {areas.map((area) => {
+                    let polygonPositions: L.LatLngExpression[] | null = null
+
+                    if (area.coordinates) {
+                        try {
+                            polygonPositions = JSON.parse(area.coordinates)
+                        } catch (e) {
+                            console.error(`Failed to parse coordinates for area ${area.name}`, e)
+                        }
+                    }
+
+                    const inRoute = isInRoute(area.id)
+                    const routeIndex = getRouteIndex(area.id)
+                    const isDanger = area.lootAbundance === 1
+
+                    // Skip rendering polygon if it's a danger zone (already rendered)
+                    if (isDanger && showDangerZones) {
+                        return null
+                    }
+
+                    return (
+                        <React.Fragment key={area.id}>
+                            {/* Draw the Polygon if coordinates exist */}
+                            {polygonPositions && (
+                                <Polygon
+                                    positions={polygonPositions}
+                                    pathOptions={{
+                                        color: inRoute ? '#4CAF50' : '#cccccc',
+                                        fillColor: inRoute ? '#4CAF50' : '#cccccc',
+                                        fillOpacity: inRoute ? 0.4 : 0.1,
+                                        weight: inRoute ? 3 : 1,
+                                    }}
+                                >
+                                    <Popup>
+                                        <strong>{area.name}</strong>
+                                        <br />
+                                        {area.lootTypes && area.lootTypes.length > 0 && (
+                                            <>
+                                                Types: {area.lootTypes.join(', ')}
+                                                <br />
+                                            </>
+                                        )}
+                                        {inRoute && (
+                                            <>
+                                                <strong>Route Position: #{routeIndex + 1}</strong>
+                                            </>
+                                        )}
+                                    </Popup>
+                                </Polygon>
+                            )}
+
+                            {/* Draw numbered marker for areas in route */}
+                            {inRoute ? (
+                                <Marker
+                                    position={coordsToLatLng(area.mapX || 0, area.mapY || 0)}
+                                    icon={createNumberedIcon(routeIndex + 1, isDanger)}
+                                >
+                                    <Popup>
+                                        <strong>
+                                            Stop #{routeIndex + 1}: {area.name}
+                                        </strong>
+                                        <br />
+                                        {area.lootTypes && area.lootTypes.length > 0 && (
+                                            <>Types: {area.lootTypes.join(', ')}</>
+                                        )}
+                                    </Popup>
+                                </Marker>
+                            ) : (
+                                <Marker position={coordsToLatLng(area.mapX || 0, area.mapY || 0)} icon={defaultIcon}>
+                                    <Popup>
+                                        <strong>{area.name}</strong>
+                                        <br />
+                                        {area.lootTypes && area.lootTypes.length > 0 && (
+                                            <>Types: {area.lootTypes.join(', ')}</>
+                                        )}
+                                    </Popup>
+                                </Marker>
+                            )}
+                        </React.Fragment>
+                    )
+                })}
+
+                {/* Render extraction point marker */}
+                {extractionPoint && extractionCoords && (
+                    <Marker position={extractionCoords} icon={exitIcon}>
+                        <Popup>
+                            <strong>🚪 EXTRACTION POINT</strong>
+                            <br />
+                            {extractionPoint}
+                        </Popup>
+                    </Marker>
+                )}
+
+                {/* Render enemy spawn markers */}
+                {enemySpawns.map((spawn) => (
+                    <Marker
+                        key={spawn.id}
+                        position={
+                            gameMap
+                                ? transformEnemyMarker(spawn, gameMap)
+                                : gameCoordsToLatLng(spawn.lng, spawn.lat)
+                        }
+                        icon={createEnemyIcon(spawn.onRoute)}
+                    >
+                        <Popup>
+                            <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong>
+                            <br />
+                            <strong>{spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}</strong>
+                            <br />
+                            {spawn.distanceToRoute !== null && spawn.distanceToRoute !== undefined && (
+                                <>
+                                    Distance to route: {Math.round(spawn.distanceToRoute)} units
+                                    <br />
+                                </>
+                            )}
+                            {spawn.onRoute && (
+                                <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>✓ Near your route</span>
+                            )}
+                        </Popup>
+                    </Marker>
+                ))}
+            </MapContainer>
+
+            {/* Legend */}
+            <div
+                style={{
+                    position: 'absolute',
+                    bottom: '20px',
+                    left: '20px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    maxWidth: '250px',
+                    zIndex: 1000,
+                    fontSize: '13px',
+                }}
+            >
+                <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Map Legend</div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                    <div
+                        style={{
+                            width: '20px',
+                            height: '20px',
+                            backgroundColor: '#4CAF50',
+                            border: '2px solid white',
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                        }}
+                    ></div>
+                    <span>Route stops</span>
+                </div>
+                {showDangerZones && (
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginBottom: '6px',
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: '20px',
+                                height: '20px',
+                                backgroundColor: '#ff0000',
+                                opacity: 0.5,
+                                border: '2px dashed #ff0000',
+                                marginRight: '8px',
+                            }}
+                        ></div>
+                        <span>Danger zones</span>
+                    </div>
+                )}
+                {extractionPoint && (
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <span style={{ fontSize: '20px', marginRight: '8px' }}>🚩</span>
+                        <span>Extraction point</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+export default MapComponent
