@@ -1,46 +1,85 @@
 package com.pauloneill.arcraidersplanner.controller;
 
-import com.pauloneill.arcraidersplanner.dto.MapRecommendationDto;
-import com.pauloneill.arcraidersplanner.service.PlannerService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import com.pauloneill.arcraidersplanner.dto.ItemDto;
+import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
+import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
 import com.pauloneill.arcraidersplanner.model.Item;
-import com.pauloneill.arcraidersplanner.repository.ItemRepository;
+import com.pauloneill.arcraidersplanner.service.ItemService;
+import com.pauloneill.arcraidersplanner.service.PlannerService;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/items")
 public class ItemController {
 
     private final PlannerService plannerService;
-    private final ItemRepository itemRepository;
+    private final ItemService itemService;
 
-    public ItemController(PlannerService plannerService, ItemRepository itemRepository) {
+    public ItemController(PlannerService plannerService, ItemService itemService) {
         this.plannerService = plannerService;
-        this.itemRepository = itemRepository;
+        this.itemService = itemService;
     }
 
     @GetMapping
-    public List<Item> searchItems(
+    public List<ItemDto> searchItems(
             @RequestParam(required = false) String search) {
 
+        List<Item> items;
         if (search != null && !search.isBlank()) {
-            return itemRepository.findByNameContainingIgnoreCase(search);
+            items = itemService.searchItems(search);
+        } else {
+            items = itemService.getAllItems();
         }
-        return itemRepository.findAll();
+
+        return items.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Endpoint: GET /api/items/recommendation?itemName={itemName}
-     * Returns a list of maps, ordered by the count of areas that match the item's required loot type.
+     * Backward-compatible endpoint for legacy UI.
+     * GET /api/items/recommendation?itemName=X
+     * Returns basic map recommendations using PURE_SCAVENGER mode.
      */
     @GetMapping("/recommendation")
-    public List<MapRecommendationDto> getRecommendationByItem(
-            @RequestParam String itemName) {
+    public List<PlannerResponseDto> getRecommendation(@RequestParam String itemName) {
+        PlannerRequestDto request = new PlannerRequestDto(
+                List.of(itemName),
+                null,
+                false,
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+        );
+        return plannerService.generateRoute(request);
+    }
 
-        return plannerService.recommendMapsByItemName(itemName);
+    /**
+     * Endpoint: POST /api/items/plan
+     * Accepts a sophisticated loadout request (items, keys, preferred mode)
+     * and returns ranked maps with calculated routes.
+     */
+    @PostMapping("/plan")
+    public List<PlannerResponseDto> planRoute(@RequestBody PlannerRequestDto request) {
+        return plannerService.generateRoute(request);
+    }
+
+    private ItemDto convertToDto(Item item) {
+        ItemDto dto = new ItemDto();
+        dto.setId(item.getId());
+        dto.setName(item.getName());
+        dto.setDescription(item.getDescription());
+        dto.setRarity(item.getRarity());
+        dto.setItemType(item.getItemType());
+        dto.setIconUrl(item.getIconUrl());
+        dto.setValue(item.getValue());
+        dto.setWeight(item.getWeight());
+        dto.setStackSize(item.getStackSize());
+
+        if (item.getLootType() != null) {
+            dto.setLootType(item.getLootType().getName());
+        }
+        return dto;
     }
 }
