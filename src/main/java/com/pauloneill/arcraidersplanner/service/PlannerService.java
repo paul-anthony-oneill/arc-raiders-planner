@@ -3,6 +3,7 @@ package com.pauloneill.arcraidersplanner.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pauloneill.arcraidersplanner.dto.AreaDto;
+import com.pauloneill.arcraidersplanner.dto.EnemySpawnDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
 import com.pauloneill.arcraidersplanner.model.*;
@@ -21,17 +22,30 @@ public class PlannerService {
     private final ItemRepository itemRepository;
     private final GameMapRepository gameMapRepository;
     private final MapMarkerRepository mapMarkerRepository;
+    private final EnemyService enemyService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public PlannerService(ItemRepository itemRepository, GameMapRepository gameMapRepository, MapMarkerRepository mapMarkerRepository) {
+    public PlannerService(ItemRepository itemRepository, GameMapRepository gameMapRepository,
+                          MapMarkerRepository mapMarkerRepository, EnemyService enemyService) {
         this.itemRepository = itemRepository;
         this.gameMapRepository = gameMapRepository;
         this.mapMarkerRepository = mapMarkerRepository;
+        this.enemyService = enemyService;
     }
 
     public List<PlannerResponseDto> generateRoute(PlannerRequestDto request) {
         Set<String> requiredLootTypes = resolveLootTypes(request.targetItemNames());
-        if (requiredLootTypes.isEmpty()) return Collections.emptyList();
+
+        // Get all spawns of target enemy types if specified
+        List<MapMarker> allEnemySpawns = Collections.emptyList();
+        if (request.targetEnemyTypes() != null && !request.targetEnemyTypes().isEmpty()) {
+            allEnemySpawns = enemyService.getSpawnsByTypes(request.targetEnemyTypes());
+        }
+
+        // Require either items OR enemies to be specified
+        if (requiredLootTypes.isEmpty() && allEnemySpawns.isEmpty()) {
+            return Collections.emptyList();
+        }
 
         List<GameMap> maps = gameMapRepository.findAllWithAreas();
         List<PlannerResponseDto> results = new ArrayList<>();
@@ -42,14 +56,20 @@ public class PlannerService {
                     .filter(area -> area.getLootTypes().stream().anyMatch(lt -> requiredLootTypes.contains(lt.getName())))
                     .collect(Collectors.toList());
 
-            if (relevantAreas.isEmpty()) continue;
+            // 2. Filter enemy spawns for this map
+            List<MapMarker> enemySpawnsOnMap = allEnemySpawns.stream()
+                    .filter(e -> e.getGameMap().getId().equals(map.getId()))
+                    .toList();
 
-            // 2. Identify "Danger Zones" (High Tier Areas) for PvP modes
+            // Skip map if it has no relevant areas AND no target enemy spawns
+            if (relevantAreas.isEmpty() && enemySpawnsOnMap.isEmpty()) continue;
+
+            // 3. Identify "Danger Zones" (High Tier Areas) for PvP modes
             List<Area> dangerZones = map.getAreas().stream()
                     .filter(a -> a.getLootAbundance() != null && a.getLootAbundance() == 1)
                     .toList();
 
-            // 3. Identify Raider Hatches for Exfil modes
+            // 4. Identify Raider Hatches for Exfil modes
             List<MapMarker> raiderHatches = Collections.emptyList();
             if (request.hasRaiderKey() && (request.routingProfile() == PlannerRequestDto.RoutingProfile.EASY_EXFIL || request.routingProfile() == PlannerRequestDto.RoutingProfile.SAFE_EXFIL)) {
                 raiderHatches = mapMarkerRepository.findByGameMapId(map.getId()).stream()
@@ -57,15 +77,17 @@ public class PlannerService {
                         .toList();
             }
 
-            // 4. Calculate Score based on Profile
-            RouteResult route = calculateRouteAndScore(relevantAreas, requiredLootTypes, request.routingProfile(), dangerZones, raiderHatches);
+            // 5. Calculate Score based on Profile (including enemy proximity)
+            RouteResult route = calculateRouteAndScore(relevantAreas, requiredLootTypes, request.routingProfile(),
+                    dangerZones, raiderHatches, enemySpawnsOnMap);
 
             results.add(new PlannerResponseDto(
                     map.getId(),
                     map.getName(),
                     route.score,
                     route.path.stream().map(this::convertToAreaDto).toList(),
-                    route.extractionPoint
+                    route.extractionPoint,
+                    route.enemySpawns  // Already converted to EnemySpawnDto in RouteResult
             ));
         }
 
@@ -73,7 +95,7 @@ public class PlannerService {
         return results;
     }
 
-    private record RouteResult(double score, List<Area> path, String extractionPoint) {
+    private record RouteResult(double score, List<Area> path, String extractionPoint, List<EnemySpawnDto> enemySpawns) {
     }
 
     private RouteResult calculateRouteAndScore(
@@ -81,12 +103,14 @@ public class PlannerService {
             Set<String> targets,
             PlannerRequestDto.RoutingProfile profile,
             List<Area> dangerZones,
-            List<MapMarker> raiderHatches
+            List<MapMarker> raiderHatches,
+            List<MapMarker> targetEnemies
     ) {
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
         if (profile == PlannerRequestDto.RoutingProfile.PURE_SCAVENGER) {
-            return new RouteResult(areas.size() * 100.0, areas, null);
+            List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(targetEnemies, areas);
+            return new RouteResult(areas.size() * 100.0, areas, null, enemySpawnDtos);
         }
 
         // --- BASE SCORING (Used for all other modes) ---
@@ -111,7 +135,10 @@ public class PlannerService {
 
         // Filter out areas with negative scores (too dangerous)
         List<Area> viableAreas = areas.stream().filter(a -> areaScores.get(a) > 0).toList();
-        if (viableAreas.isEmpty()) return new RouteResult(-1000, Collections.emptyList(), null);
+        if (viableAreas.isEmpty()) {
+            List<EnemySpawnDto> emptySpawns = convertToEnemySpawnDtos(targetEnemies, Collections.emptyList());
+            return new RouteResult(-1000, Collections.emptyList(), null, emptySpawns);
+        }
 
         // --- ROUTE GENERATION (Multi-Start Nearest Neighbor + 2-Opt) ---
         List<Area> path = findOptimalRoute(viableAreas);
@@ -151,7 +178,17 @@ public class PlannerService {
             }
         }
 
-        return new RouteResult(totalScore, path, bestExit);
+        // --- ENEMY PROXIMITY SCORING ---
+        // Bonus points if route naturally passes near target enemy spawn points
+        if (!targetEnemies.isEmpty()) {
+            double enemyScore = scoreEnemyProximity(path, targetEnemies);
+            totalScore += enemyScore;
+        }
+
+        // Convert enemy spawns to DTOs with proximity info
+        List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(targetEnemies, path);
+
+        return new RouteResult(totalScore, path, bestExit, enemySpawnDtos);
     }
 
     // --- ROUTE OPTIMIZATION HELPERS ---
@@ -350,6 +387,73 @@ public class PlannerService {
         return Math.sqrt(Math.pow(px - projX, 2) + Math.pow(py - projY, 2));
     }
 
+    /**
+     * Scores how well a route passes near target enemy spawn points.
+     * WHY: Routes that naturally pass enemies are more efficient for combined loot+hunt missions
+     *
+     * @param path Route waypoints (loot areas)
+     * @param enemies Target enemy spawn markers
+     * @return Proximity score bonus
+     */
+    private double scoreEnemyProximity(List<Area> path, List<MapMarker> enemies) {
+        double score = 0;
+        for (MapMarker enemy : enemies) {
+            double minDist = path.stream()
+                    .mapToDouble(area -> distance(area, enemy))
+                    .min()
+                    .orElse(Double.MAX_VALUE);
+
+            // Within 100m = full points (100), drops off linearly
+            if (minDist < 100) {
+                score += 100 - minDist;
+            }
+        }
+        return score;
+    }
+
+    /**
+     * Converts enemy spawn markers to DTOs with route proximity information.
+     * WHY: Frontend needs to display all spawns with highlighting for those near the route
+     *
+     * @param enemies All enemy spawns of selected types on this map
+     * @param path The optimized loot route
+     * @return List of EnemySpawnDto with onRoute status and distances
+     */
+    private List<EnemySpawnDto> convertToEnemySpawnDtos(List<MapMarker> enemies, List<Area> path) {
+        if (enemies.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        final double PROXIMITY_THRESHOLD = 100.0; // Units for considering a spawn "on route"
+
+        return enemies.stream()
+                .map(enemy -> {
+                    Double distanceToRoute = null;
+                    Boolean onRoute = false;
+
+                    if (!path.isEmpty()) {
+                        // Calculate minimum distance from this spawn to any point on the route
+                        distanceToRoute = path.stream()
+                                .mapToDouble(area -> distance(area, enemy))
+                                .min()
+                                .orElse(Double.MAX_VALUE);
+
+                        onRoute = distanceToRoute < PROXIMITY_THRESHOLD;
+                    }
+
+                    return new EnemySpawnDto(
+                            enemy.getId(),
+                            enemy.getSubcategory(),  // Enemy type (e.g., "sentinel")
+                            enemy.getGameMap().getName(),
+                            enemy.getLat(),
+                            enemy.getLng(),
+                            onRoute,
+                            distanceToRoute
+                    );
+                })
+                .toList();
+    }
+
     private AreaDto convertToAreaDto(Area area) {
         AreaDto dto = new AreaDto();
         dto.setId(area.getId());
@@ -363,4 +467,5 @@ public class PlannerService {
         }
         return dto;
     }
+
 }

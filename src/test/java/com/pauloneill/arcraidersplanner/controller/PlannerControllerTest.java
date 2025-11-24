@@ -55,7 +55,8 @@ class PlannerControllerTest {
                 "The Spaceport",
                 200.0,
                 Collections.emptyList(),
-                null
+                null,
+                Collections.emptyList()
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -87,7 +88,8 @@ class PlannerControllerTest {
                 "The Spaceport",
                 150.0,
                 Collections.emptyList(),
-                "Raider Hatch Alpha"
+                "Raider Hatch Alpha",
+                Collections.emptyList()
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -118,7 +120,8 @@ class PlannerControllerTest {
                 "Buried City",
                 180.0,
                 Collections.emptyList(),
-                null
+                null,
+                Collections.emptyList()
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -149,7 +152,8 @@ class PlannerControllerTest {
                 "Blue Gate",
                 170.0,
                 Collections.emptyList(),
-                "Safe Hatch Beta"
+                "Safe Hatch Beta",
+                Collections.emptyList()
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -198,9 +202,9 @@ class PlannerControllerTest {
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
         );
 
-        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null);
-        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null);
-        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null);
+        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null, Collections.emptyList());
+        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null, Collections.emptyList());
+        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null, Collections.emptyList());
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
                 .thenReturn(List.of(map1, map2, map3));

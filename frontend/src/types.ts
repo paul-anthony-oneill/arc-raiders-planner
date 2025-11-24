@@ -16,22 +16,18 @@ export interface Item {
     lootType: LootType | null;
 }
 
-export interface LootType {
-    id: number;
-    name: string;
-}
+// Represents an enemy type for selection (not a specific spawn)
+export type EnemyType = string;  // e.g., "sentinel", "guardian"
 
-export interface Item {
-    id: number;
-    name: string;
-    description: string;
-    rarity: string;
-    itemType: string;
-    iconUrl: string;
-    value: number;
-    weight: number;
-    stackSize: number;
-    lootType: LootType | null;
+// Represents a specific enemy spawn location on a map
+export interface EnemySpawn {
+    id: string;          // UUID of spawn point
+    type: string;        // Enemy type (e.g., "sentinel")
+    mapName: string;
+    lat: number;
+    lng: number;
+    onRoute: boolean;    // Whether this spawn is near the planned route
+    distanceToRoute?: number;  // Distance in units from nearest route point
 }
 
 export interface MapRecommendation {
@@ -61,6 +57,7 @@ export type RoutingProfile = typeof RoutingProfile[keyof typeof RoutingProfile];
 
 export interface PlannerRequest {
     targetItemNames: string[];
+    targetEnemyTypes: string[];  // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
     hasRaiderKey: boolean;
     routingProfile: RoutingProfile;
 }
@@ -71,4 +68,5 @@ export interface PlannerResponse {
     score: number;
     routePath: Area[];
     extractionPoint?: string;
+    nearbyEnemySpawns: EnemySpawn[];  // All spawns of selected enemy types with proximity info
 }

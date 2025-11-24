@@ -58,12 +58,16 @@ This project features a custom data synchronization service, demonstrating integ
 
 ## Key Endpoints & Functionality
 
-The API provides the necessary endpoints to support the frontend application.
+The API provides comprehensive endpoints for raid planning, item search, and enemy targeting.
 
 | Endpoint | Method | Functionality Showcase |
 | :--- | :--- | :--- |
-| `/api/items?search={term}` | `GET` | **Search Index:** Fetches items, supporting partial, case-insensitive search (`LIKE` query) for quick item selection. |
-| `/api/items/recommendation?itemName={name}` | `GET` | **Core Planner Logic:** Takes an item name, determines its required `LootType`, and returns a ranked list of maps with the highest number of corresponding loot zones. |
+| `/api/items?search={term}` | `GET` | **Search Index:** Fetches items with partial, case-insensitive search (`LIKE` query). |
+| `/api/items/recommendation?itemName={name}` | `GET` | **Legacy Endpoint:** Basic map recommendation by single item. |
+| `/api/planner/generate-route` | `POST` | **Advanced Route Planning:** Accepts items, enemies, and routing profile. Returns optimized routes using **multi-start nearest-neighbor + 2-opt TSP algorithm**. |
+| `/api/enemies?search={term}` | `GET` | **Enemy Search:** Searches ARC enemies by name (e.g., "Sentinel", "Guardian"). |
+| `/api/enemies/{id}` | `GET` | **Enemy Details:** Fetches specific enemy spawn details by UUID. |
+| `/api/enemies/types` | `GET` | **Enemy Categories:** Returns distinct enemy type classifications. |
 
 ---
 
@@ -97,12 +101,19 @@ To run the application, you only need **Java 21** and **Docker Desktop** install
 
 ---
 
+## Completed Features
+
+* ✅ **Multiple Item Targets & Route Planning:** Multi-start nearest-neighbor + 2-opt optimization for efficient multi-zone routes
+* ✅ **Routing Profiles:** Four specialized modes (PURE_SCAVENGER, EASY_EXFIL, AVOID_PVP, SAFE_EXFIL)
+* ✅ **ARC Enemy Targeting:** Search and target specific enemy spawns with route integration
+* ✅ **Enemy Proximity Scoring:** Routes automatically optimize for passing near target enemies
+
 ## Future Improvements
 
-* **Visual Map:** Integrate the X/Y coordinates in the database with a React Leaflet or similar library to show a visual, interactive map of recommended zones.
-* **Multiple Item Targets & Route Planning:** Implement a `routing` algorithm to suggest routes through multiple looting zones, allowing the user to set multiple Item targets
-    * **Optimised Suggestions for Multiple Item Targets:** Rank maps/route suggestions where multiple item types are targeted based on proximity. E.g. if Electrical and ARC items are targeted, rank suggestions higher if a map has a zone with both Electrical and ARC loot types. If none exist on any map, then rank maps based on those with Electrical/ARC zones closest together.
-* **Expand Beyond Items:** Use the Metaforge Data to integrate other targets for a raid, such as quest objectives or ARC targets. E.g. Complete `The Major's Footlocker` quest, find a `Rocketeer Driver` and a `Rusted Metal Gear` -> Suggest the map to complete that Quest and route to a known Rocketeer spawn and Industrial Loot Zone
+* **Enhanced Map Visualization:** Improve interactive map UI with better route visualization and waypoint display
+* **Quest Integration:** Add quest objectives as route targets (e.g., "The Major's Footlocker" quest)
+* **Crafting Components:** Integrate workbench upgrades and crafting recipe components as plannable targets
+* **Target Prioritization:** Allow users to weight importance of different targets (items vs enemies vs quests)
 
 ## Stretch Goals & Future Improvements
 

@@ -7,5 +7,7 @@ public record PlannerResponseDto(
         String mapName,
         double score,
         List<AreaDto> routePath,
-        String extractionPoint) {
+        String extractionPoint,
+        List<EnemySpawnDto> nearbyEnemySpawns  // All spawns of selected enemy types on this map, with onRoute status
+) {
 }

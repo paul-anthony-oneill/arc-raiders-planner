@@ -4,7 +4,7 @@ import DataHUD from './DataHUD';
 import MapComponent from './MapComponent';
 import MapEditor from './MapEditor';
 import { RoutingProfile } from './types';
-import type { Item, Area, PlannerResponse, PlannerRequest } from './types';
+import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest } from './types';
 import './App.css';
 
 const API_PLAN_URL = '/api/items/plan';
@@ -12,14 +12,15 @@ const API_PLAN_URL = '/api/items/plan';
 function App() {
     // State
     const [loadout, setLoadout] = useState<Item[]>([]);
+    const [selectedEnemyTypes, setSelectedEnemyTypes] = useState<EnemyType[]>([]);
     const [isCalculating, setIsCalculating] = useState(false);
     const [mapData, setMapData] = useState<{ areas: Area[], name: string } | null>(null);
-    const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null); // NEW: Store route separately
+    const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null); // Store route separately
     const [stats, setStats] = useState<any | null>(null);
     const [showEditor, setShowEditor] = useState(false);
     const [accessibilityMode, setAccessibilityMode] = useState(false);
 
-    // --- NEW STATE ---
+    // Routing configuration
     const [routingProfile, setRoutingProfile] = useState<RoutingProfile>(RoutingProfile.PURE_SCAVENGER);
     const [hasRaiderKey, setHasRaiderKey] = useState<boolean>(false);
 
@@ -36,21 +37,34 @@ function App() {
         setLoadout(newLoadout);
     };
 
+    const handleAddEnemyType = (enemyType: EnemyType) => {
+        if (selectedEnemyTypes.length < 5 && !selectedEnemyTypes.includes(enemyType)) {
+            setSelectedEnemyTypes([...selectedEnemyTypes, enemyType]);
+        }
+    };
+
+    const handleRemoveEnemyType = (index: number) => {
+        const newEnemyTypes = [...selectedEnemyTypes];
+        newEnemyTypes.splice(index, 1);
+        setSelectedEnemyTypes(newEnemyTypes);
+    };
+
     const toggleAccessibility = () => {
         setAccessibilityMode(!accessibilityMode);
         document.body.classList.toggle('accessibility-mode');
     };
 
     const handleCalculateRoute = async () => {
-        if (loadout.length === 0) return;
+        if (loadout.length === 0 && selectedEnemyTypes.length === 0) return;
 
         setIsCalculating(true);
         setStats(null);
 
         try {
-            // Construct the new Request Object using STATE values
+            // Construct the Request Object using STATE values
             const requestBody: PlannerRequest = {
                 targetItemNames: loadout.map(i => i.name),
+                targetEnemyTypes: selectedEnemyTypes,
                 hasRaiderKey: hasRaiderKey,
                 routingProfile: routingProfile
             };
@@ -122,7 +136,11 @@ function App() {
                     onRemoveFromLoadout={handleRemoveFromLoadout}
                     onCalculate={handleCalculateRoute}
                     isCalculating={isCalculating}
-                    // Pass new props
+                    // Enemy type support
+                    selectedEnemyTypes={selectedEnemyTypes}
+                    onAddEnemyType={handleAddEnemyType}
+                    onRemoveEnemyType={handleRemoveEnemyType}
+                    // Routing props
                     routingProfile={routingProfile}
                     setRoutingProfile={setRoutingProfile}
                     hasRaiderKey={hasRaiderKey}
@@ -164,6 +182,7 @@ function App() {
                                 extractionPoint={activeRoute?.extractionPoint}
                                 routingProfile={routingProfile}
                                 showRoutePath={true}
+                                enemySpawns={activeRoute?.nearbyEnemySpawns || []}
                             />
                         </div>
                     ) : (

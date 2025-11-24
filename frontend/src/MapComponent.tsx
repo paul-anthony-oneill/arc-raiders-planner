@@ -2,7 +2,7 @@ import React from 'react';
 import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { Area, RoutingProfile } from './types';
+import type { Area, EnemySpawn, RoutingProfile } from './types';
 
 interface MapProps {
     mapName: string;
@@ -11,6 +11,7 @@ interface MapProps {
     extractionPoint?: string;
     routingProfile?: RoutingProfile;
     showRoutePath?: boolean;
+    enemySpawns?: EnemySpawn[];
 }
 
 // Custom icon setup
@@ -29,6 +30,37 @@ const exitIcon = L.icon({
     iconAnchor: [20, 40],
     popupAnchor: [0, -40]
 });
+
+// Create enemy icon based on whether it's on route or not
+const createEnemyIcon = (onRoute: boolean) => {
+    const bgColor = onRoute ? '#f44336' : '#9e9e9e';
+    const borderColor = onRoute ? '#ff8a80' : '#bdbdbd';
+    const shadow = onRoute ? '0 3px 8px rgba(244, 67, 54, 0.6)' : '0 2px 4px rgba(0, 0, 0, 0.3)';
+    const size = onRoute ? 36 : 28;
+    const fontSize = onRoute ? 20 : 16;
+
+    return L.divIcon({
+        className: 'enemy-marker',
+        html: `<div style="
+            background-color: ${bgColor};
+            color: white;
+            font-weight: bold;
+            font-size: ${fontSize}px;
+            width: ${size}px;
+            height: ${size}px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid ${borderColor};
+            box-shadow: ${shadow};
+            opacity: ${onRoute ? 1 : 0.6};
+        ">⚡</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -(size / 2)]
+    });
+};
 
 // Create numbered DivIcon for route sequence
 const createNumberedIcon = (number: number, isDanger: boolean = false) => {
@@ -59,7 +91,8 @@ const MapComponent: React.FC<MapProps> = ({
     routePath = [],
     extractionPoint,
     routingProfile,
-    showRoutePath = true
+    showRoutePath = true,
+    enemySpawns = []
 }) => {
     const bounds: L.LatLngBoundsLiteral = [[-1000, -1000], [1000, 1000]];
     const maxBounds: L.LatLngBoundsLiteral = [[-1500, -1500], [1500, 1500]];
@@ -260,6 +293,24 @@ const MapComponent: React.FC<MapProps> = ({
                         </Popup>
                     </Marker>
                 )}
+
+                {/* Render enemy spawn markers */}
+                {enemySpawns.map(spawn => (
+                    <Marker
+                        key={spawn.id}
+                        position={coordsToLatLng(spawn.lng, spawn.lat)}
+                        icon={createEnemyIcon(spawn.onRoute)}
+                    >
+                        <Popup>
+                            <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong><br />
+                            <strong>{spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}</strong><br />
+                            {spawn.distanceToRoute !== null && spawn.distanceToRoute !== undefined && (
+                                <>Distance to route: {Math.round(spawn.distanceToRoute)} units<br /></>
+                            )}
+                            {spawn.onRoute && <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>✓ Near your route</span>}
+                        </Popup>
+                    </Marker>
+                ))}
             </MapContainer>
 
             {/* Legend */}
