@@ -8,14 +8,27 @@ import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.model.MapMarker;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * REST controller for game map data and visualization.
+ * WHY: Provides map metadata, loot area coordinates, markers, and calibration data
+ * for rendering interactive map overlays in the frontend.
+ */
 @RestController
 @RequestMapping("/api/maps")
+@Tag(name = "Maps", description = "Game map data, areas, markers, and calibration endpoints")
 public class MapController {
 
     private final GameMapRepository mapRepository;
@@ -27,29 +40,90 @@ public class MapController {
     }
 
     /**
-     * Endpoint: GET /api/maps/{name}/data
-     * Fetches map details and all associated Area coordinates for visualization.
-     * 
+     * Get comprehensive map data including areas and calibration settings.
+     * WHY: Frontend needs all loot area coordinates and calibration constants
+     * to render interactive overlays on map images.
+     *
      * @param name The name of the map (e.g., "Dam Battlegrounds")
+     * @return Map DTO with areas, loot types, and calibration data
      */
+    @Operation(
+            summary = "Get map data with areas",
+            description = "Retrieves complete map information including all loot areas, their coordinates, " +
+                    "associated loot types, and calibration constants for coordinate transformation"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Map data retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = GameMapDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Map not found"
+            )
+    })
     @GetMapping("/{name}/data")
-    public ResponseEntity<GameMapDto> getMapData(@PathVariable String name) {
+    public ResponseEntity<GameMapDto> getMapData(
+            @Parameter(description = "Name of the map (e.g., 'Dam Battlegrounds')", required = true)
+            @PathVariable String name) {
         return mapRepository.findByNameWithAreas(name)
                 .map(this::convertToDto)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Get all available game maps.
+     * WHY: Frontend needs the complete map catalog for dropdown selection
+     *
+     * @return List of all maps with basic metadata
+     */
+    @Operation(
+            summary = "List all maps",
+            description = "Retrieves all available game maps with basic information"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Maps retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = GameMap.class))
+            )
+    })
     @GetMapping
     public java.util.List<GameMap> getAllMaps() {
         return mapRepository.findAll();
     }
 
+    /**
+     * Get all markers for a specific map.
+     * WHY: Frontend needs marker locations (ARC enemies, Raider Hatches) to render
+     * points of interest on the map visualization.
+     *
+     * @param id Database ID of the map
+     * @return List of markers with types, names, and lat/lng coordinates
+     */
+    @Operation(
+            summary = "Get map markers",
+            description = "Retrieves all markers (ARC enemy spawns, Raider Hatches, etc.) for a specific map"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Markers retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = MapMarker.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Map not found"
+            )
+    })
     @GetMapping("/{id}/markers")
-    public ResponseEntity<List<MapMarker>> getMapMarkers(@PathVariable Long id) {
+    public ResponseEntity<List<MapMarker>> getMapMarkers(
+            @Parameter(description = "Database ID of the map", required = true)
+            @PathVariable Long id) {
         return mapRepository.findById(id)
                 .map(map -> {
-                    // Use the helper method we defined in the Repository
                     List<MapMarker> markers = mapMarkerRepository.findByGameMapId(id);
                     return ResponseEntity.ok(markers);
                 })
@@ -92,12 +166,42 @@ public class MapController {
     }
 
     /**
-     * Endpoint: PUT /api/maps/{id}/calibration
-     * Updates the calibration constants for a specific map.
+     * Update map calibration constants for coordinate transformation.
+     * WHY: Allows fine-tuning of the coordinate conversion between lat/lng and pixel coordinates
+     * to ensure accurate marker placement on map images.
+     *
+     * @param id Database ID of the map
+     * @param dto Calibration constants (scaleX, scaleY, offsetX, offsetY)
+     * @return Updated map entity
      */
+    @Operation(
+            summary = "Update map calibration",
+            description = "Updates the calibration constants used to transform between lat/lng coordinates " +
+                    "and pixel coordinates for accurate marker placement on map images"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Calibration updated successfully",
+                    content = @Content(schema = @Schema(implementation = GameMap.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Map not found"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid calibration data"
+            )
+    })
     @PutMapping("/{id}/calibration")
     public ResponseEntity<GameMap> updateCalibration(
+            @Parameter(description = "Database ID of the map", required = true)
             @PathVariable Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Calibration constants for coordinate transformation",
+                    required = true
+            )
             @RequestBody CalibrationDto dto) {
 
         return mapRepository.findById(id)
