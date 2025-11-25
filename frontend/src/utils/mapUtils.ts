@@ -1,5 +1,4 @@
 import L from 'leaflet'
-import type { EnemySpawn } from '../types'
 
 // --- TYPES for Map Editor and Calibration ---
 export interface GameMap {

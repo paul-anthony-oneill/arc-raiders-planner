@@ -5,7 +5,6 @@ import MapComponent from './MapComponent'
 import MapEditor from './MapEditor'
 import { RoutingProfile } from './types'
 import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest } from './types'
-import type { GameMap } from './utils/mapUtils'
 import './App.css'
 
 const API_PLAN_URL = '/api/items/plan'
@@ -23,7 +22,6 @@ function App() {
     const [stats, setStats] = useState<any | null>(null)
     const [showEditor, setShowEditor] = useState(false)
     const [accessibilityMode, setAccessibilityMode] = useState(false)
-    const [currentGameMap, setCurrentGameMap] = useState<GameMap | null>(null)
 
     // Routing configuration
     const [routingProfile, setRoutingProfile] = useState<RoutingProfile>(RoutingProfile.PURE_SCAVENGER)
@@ -92,16 +90,7 @@ function App() {
                 // 2. Store the active route
                 setActiveRoute(bestPlan)
 
-                // 3. Fetch GameMap with calibration data
-                const gameMapRes = await fetch('/api/maps')
-                if (!gameMapRes.ok) {
-                    throw new Error(`Failed to fetch game maps: ${gameMapRes.status}`)
-                }
-                const allMaps: GameMap[] = await gameMapRes.json()
-                const selectedMap = allMaps.find((m) => m.name === bestPlan.mapName)
-                setCurrentGameMap(selectedMap || null)
-
-                // 4. Fetch FULL map data (all areas, not just route)
+                // 3. Fetch FULL map data (all areas, not just route)
                 const mapUrl = `/api/maps/${encodeURIComponent(bestPlan.mapName)}/data`
                 const mapResponse = await fetch(mapUrl)
                 if (!mapResponse.ok) {
@@ -199,7 +188,6 @@ function App() {
                                 routingProfile={routingProfile}
                                 showRoutePath={true}
                                 enemySpawns={activeRoute?.nearbyEnemySpawns || []}
-                                gameMap={currentGameMap}
                             />
                         </div>
                     ) : (
