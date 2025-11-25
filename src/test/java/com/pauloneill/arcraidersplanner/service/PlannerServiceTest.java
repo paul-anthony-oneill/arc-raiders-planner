@@ -6,6 +6,7 @@ import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.repository.QuestRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,10 @@ class PlannerServiceTest {
     private GameMapRepository gameMapRepository;
     @Mock
     private MapMarkerRepository mapMarkerRepository;
+    @Mock
+    private QuestRepository questRepository;
+    @Mock
+    private EnemyService enemyService;
 
     @InjectMocks
     private PlannerService plannerService;
@@ -71,7 +76,7 @@ class PlannerServiceTest {
         when(gameMapRepository.findAllWithAreas()).thenReturn(List.of(mapA, mapB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, false, PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+                List.of("Copper Wire"), null, null, false, PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
         );
 
         // Act
@@ -114,7 +119,7 @@ class PlannerServiceTest {
         when(gameMapRepository.findAllWithAreas()).thenReturn(List.of(mapA, mapB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, false, PlannerRequestDto.RoutingProfile.AVOID_PVP
+                List.of("Copper Wire"), null, null, false, PlannerRequestDto.RoutingProfile.AVOID_PVP
         );
 
         // Act
@@ -165,7 +170,7 @@ class PlannerServiceTest {
         when(mapMarkerRepository.findByGameMapId(2L)).thenReturn(List.of(hatchB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, true, PlannerRequestDto.RoutingProfile.EASY_EXFIL
+                List.of("Copper Wire"), null, null, true, PlannerRequestDto.RoutingProfile.EASY_EXFIL
         );
 
         // Act
@@ -224,7 +229,7 @@ class PlannerServiceTest {
         when(mapMarkerRepository.findByGameMapId(2L)).thenReturn(List.of(hatchB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, true, PlannerRequestDto.RoutingProfile.SAFE_EXFIL
+                List.of("Copper Wire"), null, null, true, PlannerRequestDto.RoutingProfile.SAFE_EXFIL
         );
 
         // Act

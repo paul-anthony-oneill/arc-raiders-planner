@@ -5,6 +5,7 @@ import java.util.List;
 public record PlannerRequestDto(
         List<String> targetItemNames,
         List<String> targetEnemyTypes,  // Enemy type names (e.g., "sentinel", "guardian")
+        List<String> targetQuestIds,
         boolean hasRaiderKey,
         RoutingProfile routingProfile
 ) {

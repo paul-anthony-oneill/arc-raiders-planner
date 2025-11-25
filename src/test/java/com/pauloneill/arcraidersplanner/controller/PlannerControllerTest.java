@@ -46,6 +46,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null,
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
         );
@@ -56,6 +57,9 @@ class PlannerControllerTest {
                 200.0,
                 Collections.emptyList(),
                 null,
+                null,
+                null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -79,6 +83,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null,
                 true,
                 PlannerRequestDto.RoutingProfile.EASY_EXFIL
         );
@@ -89,6 +94,9 @@ class PlannerControllerTest {
                 150.0,
                 Collections.emptyList(),
                 "Raider Hatch Alpha",
+                null,
+                null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -111,6 +119,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Industrial Parts"),
                 null,
+                null,
                 false,
                 PlannerRequestDto.RoutingProfile.AVOID_PVP
         );
@@ -121,6 +130,9 @@ class PlannerControllerTest {
                 180.0,
                 Collections.emptyList(),
                 null,
+                null,
+                null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -143,6 +155,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Mechanical Components"),
                 null,
+                null,
                 true,
                 PlannerRequestDto.RoutingProfile.SAFE_EXFIL
         );
@@ -153,6 +166,9 @@ class PlannerControllerTest {
                 170.0,
                 Collections.emptyList(),
                 "Safe Hatch Beta",
+                null,
+                null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -174,6 +190,7 @@ class PlannerControllerTest {
         // Arrange
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Nonexistent Item"),
+                null,
                 null,
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
@@ -198,13 +215,14 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null,
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
         );
 
-        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null, Collections.emptyList());
-        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null, Collections.emptyList());
-        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null, Collections.emptyList());
+        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null, null, null, Collections.emptyList(), Collections.emptyList());
+        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null, null, null, Collections.emptyList(), Collections.emptyList());
+        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null, null, null, Collections.emptyList(), Collections.emptyList());
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
                 .thenReturn(List.of(map1, map2, map3));

@@ -30,6 +30,15 @@ export interface EnemySpawn {
   distanceToRoute?: number; // Distance in units from nearest route point
 }
 
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  category: string;
+  subcategory: string;
+  name: string;
+}
+
 export interface MapRecommendation {
   mapId: number;
   mapName: string;
@@ -59,8 +68,14 @@ export type RoutingProfile =
 export interface PlannerRequest {
   targetItemNames: string[];
   targetEnemyTypes: string[]; // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
+  targetQuestIds?: string[];
   hasRaiderKey: boolean;
   routingProfile: RoutingProfile;
+}
+
+export interface Quest {
+  id: string;
+  name: string;
 }
 
 export interface PlannerResponse {
@@ -72,4 +87,5 @@ export interface PlannerResponse {
   extractionLat?: number;  // Calibrated Y coordinate of extraction point
   extractionLng?: number;  // Calibrated X coordinate of extraction point
   nearbyEnemySpawns: EnemySpawn[]; // All spawns of selected enemy types with proximity info
+  questMarkers?: MapMarker[];
 }

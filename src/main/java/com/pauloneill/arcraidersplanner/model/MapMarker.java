@@ -26,4 +26,12 @@ public class MapMarker {
     @ManyToOne
     @JoinColumn(name = "map_id", nullable = false)
     private GameMap gameMap;
+
+    @ManyToMany
+    @JoinTable(
+            name = "quest_markers",
+            joinColumns = @JoinColumn(name = "marker_id"),
+            inverseJoinColumns = @JoinColumn(name = "quest_id")
+    )
+    private java.util.Set<Quest> quests;
 }

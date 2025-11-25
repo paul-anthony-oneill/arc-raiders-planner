@@ -101,6 +101,7 @@ public class ItemController {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of(itemName),
                 null,
+                null,
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
         );
