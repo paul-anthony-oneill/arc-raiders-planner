@@ -1,5 +1,5 @@
 import React from 'react';
-import { Quest } from './types';
+import type { Quest } from './types';
 
 interface QuestSelectorProps {
     quests: Quest[];

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { RoutingProfile } from "./types";
-import type { Area, Item, PlannerResponse } from "./types";
+import type { Area, Item, PlannerResponse, Quest } from "./types";
+import { fetchQuests } from "./api/questApi";
 import MapComponent from "./MapComponent";
+import QuestSelector from "./QuestSelector";
 
 const API_PLANNER_URL = "/api/planner";
 const API_MAP_DATA_URL = "/api/maps";
@@ -27,20 +29,29 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
   // New state for enemy targeting
   const [availableEnemies, setAvailableEnemies] = useState<string[]>([]);
   const [targetEnemies, setTargetEnemies] = useState<string[]>([]);
+  
+  // New state for quests
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [selectedQuestIds, setSelectedQuestIds] = useState<string[]>([]);
 
-  // Fetch available enemy types on mount
+  // Fetch available enemy types and quests on mount
   useEffect(() => {
-    const fetchEnemyTypes = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(API_ENEMY_TYPES_URL);
-        const enemyTypes: string[] = await response.json();
+        // Fetch enemy types
+        const enemyResponse = await fetch(API_ENEMY_TYPES_URL);
+        const enemyTypes: string[] = await enemyResponse.json();
         setAvailableEnemies(enemyTypes);
+
+        // Fetch quests
+        const fetchedQuests = await fetchQuests();
+        setQuests(fetchedQuests);
       } catch (err) {
-        console.error("Failed to fetch enemy types:", err);
+        console.error("Failed to fetch initial data:", err);
         // Non-critical, so we don't set a user-facing error
       }
     };
-    fetchEnemyTypes();
+    fetchData();
   }, []);
 
   // Smart defaults: Update routing profile based on Raider Key status
@@ -73,13 +84,13 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
         const response = await fetch(API_PLANNER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
-            targetEnemyTypes: targetEnemies,
-            hasRaiderKey,
-            routingProfile,
-          }),
-        });
+                      body: JSON.stringify({
+                      targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
+                      targetEnemyTypes: targetEnemies,
+                      targetQuestIds: selectedQuestIds,
+                      hasRaiderKey,
+                      routingProfile,
+                    }),        });
 
         const results: PlannerResponse[] = await response.json();
         setRecommendations(results);
@@ -298,6 +309,17 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
           </p>
         </div>
 
+        <QuestSelector
+          quests={quests}
+          selectedQuestIds={selectedQuestIds}
+          onSelectQuest={(questId) =>
+            setSelectedQuestIds([...selectedQuestIds, questId])
+          }
+          onDeselectQuest={(questId) =>
+            setSelectedQuestIds(selectedQuestIds.filter((id) => id !== questId))
+          }
+        />
+
         <div>
           <label
             style={{
@@ -380,6 +402,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
               routingProfile={routingProfile}
               showRoutePath={showRoutePath}
               enemySpawns={recommendations[0].nearbyEnemySpawns}
+              questMarkers={recommendations[0].questMarkers}
             />
           )}
         </>

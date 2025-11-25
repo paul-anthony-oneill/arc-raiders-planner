@@ -5,8 +5,7 @@ import MapComponent from './MapComponent'
 import MapEditor from './MapEditor'
 import { RoutingProfile } from './types'
 import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest, Quest } from './types'
-import QuestSelector from './QuestSelector';
-import { fetchQuests } from './api/questApi';
+import { fetchQuests } from './api/questApi'
 import './App.css'
 
 const API_PLAN_URL = '/api/items/plan'
@@ -22,7 +21,6 @@ function App() {
         areas: Area[]
         name: string
     } | null>(null)
-    const [recommendedRoutes, setRecommendedRoutes] = useState<PlannerResponse[]>([])
     const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null) // Store route separately
     const [stats, setStats] = useState<any | null>(null)
     const [showEditor, setShowEditor] = useState(false)
@@ -35,15 +33,14 @@ function App() {
     useEffect(() => {
         const loadQuests = async () => {
             try {
-                const fetchedQuests = await fetchQuests();
-                setQuests(fetchedQuests);
+                const fetchedQuests = await fetchQuests()
+                setQuests(fetchedQuests)
             } catch (error) {
-                console.error("Failed to fetch quests:", error);
+                console.error('Failed to fetch quests:', error)
             }
-        };
-        loadQuests();
-    }, []);
-
+        }
+        loadQuests()
+    }, [])
 
     // Handlers
     const handleAddToLoadout = (item: Item) => {
@@ -102,7 +99,7 @@ function App() {
             }
 
             const plans: PlannerResponse[] = await planRes.json()
-            setRecommendedRoutes(plans);
+
 
             if (plans.length > 0) {
                 const bestPlan = plans[0]
@@ -151,7 +148,7 @@ function App() {
             <div className="absolute inset-0 crt-overlay pointer-events-none z-50"></div>
 
             {/* Sidebar (Left) */}
-            <div className="w-80 flex-shrink-0 h-full z-40">
+            <div className="w-80 shrink-0 h-full z-40">
                 <Sidebar
                     loadout={loadout}
                     onAddToLoadout={handleAddToLoadout}
@@ -165,7 +162,7 @@ function App() {
                     quests={quests}
                     selectedQuestIds={selectedQuestIds}
                     onSelectQuest={(questId) => setSelectedQuestIds([...selectedQuestIds, questId])}
-                    onDeselectQuest={(questId) => setSelectedQuestIds(selectedQuestIds.filter(id => id !== questId))}
+                    onDeselectQuest={(questId) => setSelectedQuestIds(selectedQuestIds.filter((id) => id !== questId))}
                     // Routing props
                     routingProfile={routingProfile}
                     setRoutingProfile={setRoutingProfile}

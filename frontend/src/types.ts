@@ -30,6 +30,15 @@ export interface EnemySpawn {
   distanceToRoute?: number; // Distance in units from nearest route point
 }
 
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  category: string;
+  subcategory: string;
+  name: string;
+}
+
 export interface MapRecommendation {
   mapId: number;
   mapName: string;

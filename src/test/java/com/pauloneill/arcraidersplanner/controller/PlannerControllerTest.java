@@ -59,6 +59,7 @@ class PlannerControllerTest {
                 null,
                 null,
                 null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -95,6 +96,7 @@ class PlannerControllerTest {
                 "Raider Hatch Alpha",
                 null,
                 null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -130,6 +132,7 @@ class PlannerControllerTest {
                 null,
                 null,
                 null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -165,6 +168,7 @@ class PlannerControllerTest {
                 "Safe Hatch Beta",
                 null,
                 null,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -216,9 +220,9 @@ class PlannerControllerTest {
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
         );
 
-        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null, null, null, Collections.emptyList());
-        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null, null, null, Collections.emptyList());
-        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null, null, null, Collections.emptyList());
+        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null, null, null, Collections.emptyList(), Collections.emptyList());
+        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null, null, null, Collections.emptyList(), Collections.emptyList());
+        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null, null, null, Collections.emptyList(), Collections.emptyList());
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
                 .thenReturn(List.of(map1, map2, map3));

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ItemIndex from "./ItemIndex";
 import EnemyIndex from "./EnemyIndex";
+import QuestSelector from "./QuestSelector";
 import { RoutingProfile } from "./types";
 import type { Item, EnemyType, Quest } from "./types";
 

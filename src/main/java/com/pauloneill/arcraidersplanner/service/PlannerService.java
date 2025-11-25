@@ -119,7 +119,8 @@ public class PlannerService {
                     route.extractionPoint,
                     route.extractionLat,
                     route.extractionLng,
-                    route.enemySpawns
+                    route.enemySpawns,
+                    questMarkersOnMap
             );
             log.debug("Route for {}: extraction={}, coords=[{}, {}]", map.getName(), route.extractionPoint,
                     route.extractionLat, route.extractionLng);
