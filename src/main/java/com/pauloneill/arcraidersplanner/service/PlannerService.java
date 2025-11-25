@@ -10,12 +10,14 @@ import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class PlannerService {
 
@@ -81,32 +83,41 @@ public class PlannerService {
                 extractionMarkers = mapMarkerRepository.findByGameMapId(map.getId()).stream()
                         .filter(m -> "hatch".equalsIgnoreCase(m.getSubcategory()))
                         .toList();
+                log.debug("Using Raider Hatches: found {} hatches for map {}", extractionMarkers.size(), map.getName());
             } else {
                 // Standard mode: Use generic extraction markers
                 extractionMarkers = mapMarkerRepository.findByGameMapId(map.getId()).stream()
                         .filter(m -> "extraction".equalsIgnoreCase(m.getSubcategory()))
                         .toList();
+                log.debug("Using extraction markers: found {} extraction points for map {}", extractionMarkers.size(),
+                        map.getName());
             }
 
             // 5. Calculate Score based on Profile (including enemy proximity)
             RouteResult route = calculateRouteAndScore(relevantAreas, requiredLootTypes, request.routingProfile(),
-                    dangerZones, extractionMarkers, enemySpawnsOnMap);
+                    dangerZones, extractionMarkers, enemySpawnsOnMap, map);
 
-            results.add(new PlannerResponseDto(
+            PlannerResponseDto response = new PlannerResponseDto(
                     map.getId(),
                     map.getName(),
                     route.score,
                     route.path.stream().map(this::convertToAreaDto).toList(),
                     route.extractionPoint,
+                    route.extractionLat,
+                    route.extractionLng,
                     route.enemySpawns // Already converted to EnemySpawnDto in RouteResult
-            ));
+            );
+            log.debug("Route for {}: extraction={}, coords=[{}, {}]", map.getName(), route.extractionPoint,
+                    route.extractionLat, route.extractionLng);
+            results.add(response);
         }
 
         results.sort(Comparator.comparingDouble(PlannerResponseDto::score).reversed());
         return results;
     }
 
-    private record RouteResult(double score, List<Area> path, String extractionPoint, List<EnemySpawnDto> enemySpawns) {
+    private record RouteResult(double score, List<Area> path, String extractionPoint, Double extractionLat,
+            Double extractionLng, List<EnemySpawnDto> enemySpawns) {
     }
 
     private RouteResult calculateRouteAndScore(
@@ -115,12 +126,13 @@ public class PlannerService {
             PlannerRequestDto.RoutingProfile profile,
             List<Area> dangerZones,
             List<MapMarker> extractionMarkers,
-            List<MapMarker> targetEnemies) {
+            List<MapMarker> targetEnemies,
+            GameMap map) {
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
         if (profile == PlannerRequestDto.RoutingProfile.PURE_SCAVENGER) {
             List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(targetEnemies, areas);
-            return new RouteResult(areas.size() * 100.0, areas, null, enemySpawnDtos);
+            return new RouteResult(areas.size() * 100.0, areas, null, null, null, enemySpawnDtos);
         }
 
         // --- BASE SCORING (Used for all other modes) ---
@@ -147,12 +159,39 @@ public class PlannerService {
         // Filter out areas with negative scores (too dangerous)
         List<Area> viableAreas = areas.stream().filter(a -> areaScores.get(a) > 0).toList();
         if (viableAreas.isEmpty()) {
+            log.debug("No viable areas found - returning fallback extraction point if available");
             List<EnemySpawnDto> emptySpawns = convertToEnemySpawnDtos(targetEnemies, Collections.emptyList());
-            return new RouteResult(-1000, Collections.emptyList(), null, emptySpawns);
+
+            // Still calculate extraction point even with no route
+            String bestExit = null;
+            Double extractionLat = null;
+            Double extractionLng = null;
+            if (!extractionMarkers.isEmpty()) {
+                // Use ANY area from the map as reference
+                Set<Area> allMapAreas = map.getAreas();
+                if (!allMapAreas.isEmpty()) {
+                    Area referenceArea = allMapAreas.iterator().next();
+                    MapMarker nearestExtraction = extractionMarkers.stream()
+                            .min(Comparator.comparingDouble(m -> distance(referenceArea, m)))
+                            .orElse(null);
+                    if (nearestExtraction != null) {
+                        bestExit = (nearestExtraction.getName() != null && !nearestExtraction.getName().isBlank())
+                                ? nearestExtraction.getName()
+                                : "Extraction Point";
+                        extractionLat = nearestExtraction.getLat();
+                        extractionLng = nearestExtraction.getLng();
+                        log.debug("Fallback extraction: {} at [{}, {}]", bestExit, extractionLat, extractionLng);
+                    }
+                } else {
+                    log.warn("Map {} has no areas to use as reference for extraction calculation", map.getName());
+                }
+            }
+            return new RouteResult(-1000, Collections.emptyList(), bestExit, extractionLat, extractionLng, emptySpawns);
         }
 
         // --- ROUTE GENERATION (Multi-Start Nearest Neighbor + 2-Opt) ---
         List<Area> path = findOptimalRoute(viableAreas);
+        log.debug("Generated route with {} areas", path.size());
 
         // Calculate score for the optimized path
         double totalScore = 0;
@@ -172,12 +211,18 @@ public class PlannerService {
             }
         }
 
-        Area current = path.get(path.size() - 1); // Last area for exfil calculation
-
         // --- EXTRACTION LOGIC ---
         // Calculate nearest extraction point and apply scoring bonus for proximity
         String bestExit = null;
-        if (!extractionMarkers.isEmpty()) {
+        Double extractionLat = null;
+        Double extractionLng = null;
+
+        if (path.isEmpty()) {
+            log.warn("Cannot calculate extraction point: route path is empty");
+        } else if (extractionMarkers.isEmpty()) {
+            log.warn("Cannot calculate extraction point: no extraction markers available");
+        } else {
+            Area current = path.get(path.size() - 1); // Last area for exfil calculation
             final Area finalLootZone = current;
             MapMarker nearestExtraction = extractionMarkers.stream()
                     .min(Comparator.comparingDouble(m -> distance(finalLootZone, m)))
@@ -201,6 +246,12 @@ public class PlannerService {
                 bestExit = (nearestExtraction.getName() != null && !nearestExtraction.getName().isBlank())
                         ? nearestExtraction.getName()
                         : "Extraction Point";
+
+                // Store calibrated coordinates for frontend rendering
+                extractionLat = nearestExtraction.getLat();
+                extractionLng = nearestExtraction.getLng();
+                log.debug("Selected extraction: {} at [{}, {}], distance: {}", bestExit, extractionLat, extractionLng,
+                        distToExit);
             }
         }
 
@@ -214,7 +265,7 @@ public class PlannerService {
         // Convert enemy spawns to DTOs with proximity info
         List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(targetEnemies, path);
 
-        return new RouteResult(totalScore, path, bestExit, enemySpawnDtos);
+        return new RouteResult(totalScore, path, bestExit, extractionLat, extractionLng, enemySpawnDtos);
     }
 
     // --- ROUTE OPTIMIZATION HELPERS ---

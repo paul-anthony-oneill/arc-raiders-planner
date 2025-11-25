@@ -194,6 +194,8 @@ function App() {
                                 areas={mapData.areas}
                                 routePath={activeRoute?.routePath || []}
                                 extractionPoint={activeRoute?.extractionPoint}
+                                extractionLat={activeRoute?.extractionLat}
+                                extractionLng={activeRoute?.extractionLng}
                                 routingProfile={routingProfile}
                                 showRoutePath={true}
                                 enemySpawns={activeRoute?.nearbyEnemySpawns || []}

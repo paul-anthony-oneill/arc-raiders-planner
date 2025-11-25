@@ -375,6 +375,8 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
               areas={mapData.areas}
               routePath={recommendations[0].routePath}
               extractionPoint={recommendations[0].extractionPoint}
+              extractionLat={recommendations[0].extractionLat}
+              extractionLng={recommendations[0].extractionLng}
               routingProfile={routingProfile}
               showRoutePath={showRoutePath}
               enemySpawns={recommendations[0].nearbyEnemySpawns}

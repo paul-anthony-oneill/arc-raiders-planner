@@ -639,7 +639,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                                     .map((marker) => (
                                         <CircleMarker
                                             key={marker.id}
-                                            center={transformMarker(marker, selectedMap)}
+                                            center={[marker.lat, marker.lng]}
                                             {...markerOptions}
                                         >
                                             <Popup>

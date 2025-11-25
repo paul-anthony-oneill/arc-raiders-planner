@@ -10,6 +10,8 @@ interface MapProps {
     areas: Area[]
     routePath?: Area[]
     extractionPoint?: string
+    extractionLat?: number
+    extractionLng?: number
     routingProfile?: RoutingProfile
     showRoutePath?: boolean
     enemySpawns?: EnemySpawn[]
@@ -93,6 +95,8 @@ const MapComponent: React.FC<MapProps> = ({
     areas,
     routePath = [],
     extractionPoint,
+    extractionLat,
+    extractionLng,
     routingProfile,
     showRoutePath = true,
     enemySpawns = [],
@@ -128,11 +132,10 @@ const MapComponent: React.FC<MapProps> = ({
     const spawnCoords: L.LatLngTuple = [0, 0] // Placeholder, will be set per spawn
 
     // Find extraction point coordinates (if exists)
+    // Backend now provides calibrated coordinates directly
     let extractionCoords: L.LatLngTuple | null = null
-    if (extractionPoint && routePath.length > 0) {
-        // Use last area in route as approximate extraction location
-        const lastArea = routePath[routePath.length - 1]
-        extractionCoords = [lastArea.mapY, lastArea.mapX] as L.LatLngTuple
+    if (extractionPoint && extractionLat != null && extractionLng != null) {
+        extractionCoords = [extractionLat, extractionLng] as L.LatLngTuple
     }
 
     // Check if an area is in the route

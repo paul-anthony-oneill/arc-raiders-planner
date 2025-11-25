@@ -69,5 +69,7 @@ export interface PlannerResponse {
   score: number;
   routePath: Area[];
   extractionPoint?: string;
+  extractionLat?: number;  // Calibrated Y coordinate of extraction point
+  extractionLng?: number;  // Calibrated X coordinate of extraction point
   nearbyEnemySpawns: EnemySpawn[]; // All spawns of selected enemy types with proximity info
 }
