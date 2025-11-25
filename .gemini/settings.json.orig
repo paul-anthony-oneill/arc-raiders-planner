@@ -1,0 +1,7 @@
+{
+  "checkpointing": {
+    "enabled": true
+  },
+  "mcpServers": {
+  }
+}
