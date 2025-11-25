@@ -2,7 +2,6 @@ import React from 'react'
 import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Area, EnemySpawn, RoutingProfile } from './types'
-import { transformMarker, gameCoordsToLatLng, type GameMap } from './utils/mapUtils'
 import L from 'leaflet'
 
 interface MapProps {
@@ -15,7 +14,6 @@ interface MapProps {
     routingProfile?: RoutingProfile
     showRoutePath?: boolean
     enemySpawns?: EnemySpawn[]
-    gameMap?: GameMap | null
 }
 
 // Custom icon setup
@@ -100,7 +98,6 @@ const MapComponent: React.FC<MapProps> = ({
     routingProfile,
     showRoutePath = true,
     enemySpawns = [],
-    gameMap,
 }) => {
     const bounds: L.LatLngBoundsLiteral = [
         [-1000, -1000],
@@ -128,8 +125,6 @@ const MapComponent: React.FC<MapProps> = ({
 
     // Get route path coordinates for polyline
     const routePathCoords: L.LatLngExpression[] = routePath.map((area) => coordsToLatLng(area.mapX, area.mapY))
-
-    const spawnCoords: L.LatLngTuple = [0, 0] // Placeholder, will be set per spawn
 
     // Find extraction point coordinates (if exists)
     // Backend now provides calibrated coordinates directly
