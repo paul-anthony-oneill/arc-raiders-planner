@@ -301,11 +301,7 @@ const MapComponent: React.FC<MapProps> = ({
                 {/* Render extraction point marker */}
                 {extractionPoint && extractionCoords && (
                     <Marker
-                        position={
-                            gameMap
-                                ? transformMarker(extractionCoords, gameMap)
-                                : gameCoordsToLatLng(extractionCoords[0], extractionCoords[1])
-                        }
+                        position={[extractionCoords[0], extractionCoords[1]]}
                         icon={exitIcon}
                     >
                         <Popup>
@@ -324,11 +320,7 @@ const MapComponent: React.FC<MapProps> = ({
                         (
                             <Marker
                                 key={spawn.id}
-                                position={
-                                    gameMap
-                                        ? transformMarker(spawnCoords, gameMap)
-                                        : gameCoordsToLatLng(spawn.lng, spawn.lat)
-                                }
+                                position={[spawn.lat, spawn.lng]}
                                 icon={createEnemyIcon(spawn.onRoute)}
                             >
                                 <Popup>

@@ -33,18 +33,20 @@ public class MetaforgeSyncService {
     private final LootAreaRepository lootAreaRepository;
     private final MapMarkerRepository markerRepository;
     private final GameMapRepository gameMapRepository;
+    private final CoordinateCalibrationService calibrationService;
 
     @Value("${metaforge.api.url}")
     private String metaforgeApiUrl;
 
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
             LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository,
-            GameMapRepository gameMapRepository) {
+            GameMapRepository gameMapRepository, CoordinateCalibrationService calibrationService) {
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
         this.markerRepository = markerRepository;
         this.gameMapRepository = gameMapRepository;
+        this.calibrationService = calibrationService;
     }
 
     @Transactional
@@ -156,10 +158,17 @@ public class MetaforgeSyncService {
                         continue;
                     }
 
+                    // Calibrate coordinates before storing
+                    double[] calibrated = calibrationService.calibrateCoordinates(
+                        dto.lat(),
+                        dto.lng(),
+                        map
+                    );
+
                     MapMarker marker = new MapMarker();
                     marker.setId(dto.id());
-                    marker.setLat(dto.lat());
-                    marker.setLng(dto.lng());
+                    marker.setLat(calibrated[0]);  // Store calibrated Y
+                    marker.setLng(calibrated[1]);  // Store calibrated X
                     marker.setCategory(dto.category());
                     marker.setSubcategory(dto.subcategory());
                     marker.setName(dto.name());

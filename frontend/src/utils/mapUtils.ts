@@ -46,7 +46,10 @@ export const gameCoordsToLatLng = (x: number, y: number): L.LatLngTuple => {
     return [y, x] as L.LatLngTuple
 }
 
-// --- HELPER: Transform Coordinates ---
+/**
+ * @deprecated Backend now stores calibrated coordinates.
+ * Only kept for MapEditor calibration UI (if needed).
+ */
 export const transformMarker = (marker: L.LatLngTuple, map: GameMap): L.LatLngTuple => {
     const scaleX = map.calibrationScaleX ?? 1.0
     const scaleY = map.calibrationScaleY ?? 1.0
