@@ -3,7 +3,7 @@ import { CircleMarker, ImageOverlay, MapContainer, Polygon, Polyline, Popup, use
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Area } from './types'
-import { type GameMap, type GameMarker, transformMarker } from './utils/mapUtils'
+import { type GameMap, type GameMarker } from './utils/mapUtils'
 
 interface MapEditorProps {
     onExit: () => void
