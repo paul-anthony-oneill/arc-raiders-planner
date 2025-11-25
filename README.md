@@ -10,29 +10,29 @@ This project is built using a modern, containerized, three-tier architecture, em
 
 ### Backend (API/Logic)
 
-| Technology | Version | Purpose & Feature Showcase |
-| :--- | :--- | :--- |
-| **Java** | 21 (LTS) | Used for application logic and concurrency. |
-| **Spring Boot** | 3.5.7 | Core framework for building robust, scalable REST APIs. |
-| **Spring Data JPA** / **Hibernate** | Latest | ORM layer used for complex data modeling, demonstrated via **Many-to-Many relationships** (`Area` to `LootType`). |
-| **PostgreSQL** | 15 | Relational database (SQL) used for persistence, selected for data integrity and complex querying capabilities. |
-| **Flyway** | Latest | **Database Migration Tool** used to version control the database schema and load static reference data (e.g., Maps, Loot Types) reliably. |
-| **Project Lombok** | Latest | Used to reduce Java boilerplate code. |
+| Technology                          | Version  | Purpose & Feature Showcase                                                                                                                |
+| :---------------------------------- | :------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Java**                            | 21 (LTS) | Used for application logic and concurrency.                                                                                               |
+| **Spring Boot**                     | 3.5.7    | Core framework for building robust, scalable REST APIs.                                                                                   |
+| **Spring Data JPA** / **Hibernate** | Latest   | ORM layer used for complex data modeling, demonstrated via **Many-to-Many relationships** (`Area` to `LootType`).                         |
+| **PostgreSQL**                      | 15       | Relational database (SQL) used for persistence, selected for data integrity and complex querying capabilities.                            |
+| **Flyway**                          | Latest   | **Database Migration Tool** used to version control the database schema and load static reference data (e.g., Maps, Loot Types) reliably. |
+| **Project Lombok**                  | Latest   | Used to reduce Java boilerplate code.                                                                                                     |
 
 ### Frontend (User Interface)
 
-| Technology | Version | Purpose & Feature Showcase |
-| :--- | :--- |
-| **React** | Latest |
-| **TypeScript** | Latest |
-| **Vite** | Latest |
+| Technology     | Version | Purpose & Feature Showcase |
+| :------------- | :------ | -------------------------- |
+| **React**      | Latest  |
+| **TypeScript** | Latest  |
+| **Vite**       | Latest  |
 
 ### Infrastructure / DevOps
 
-| Tool | Purpose & Feature Showcase |
-| :--- | :--- |
-| **Docker Compose** | Used to provision the local PostgreSQL database, ensuring environment parity and quick setup. |
-| **Spring Boot Docker Compose Support** | Automatically manages the PostgreSQL container lifecycle (start/stop) with the application. |
+| Tool                                   | Purpose & Feature Showcase                                                                    |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| **Docker Compose**                     | Used to provision the local PostgreSQL database, ensuring environment parity and quick setup. |
+| **Spring Boot Docker Compose Support** | Automatically manages the PostgreSQL container lifecycle (start/stop) with the application.   |
 
 ---
 
@@ -44,15 +44,15 @@ The application’s architecture is structured to highlight key engineering comp
 
 This project features a custom data synchronization service, demonstrating integration with external, real-world services.
 
-* **Extraction:** Data is sourced from the Metaforge ARC Raiders API (https://metaforge.app/arc-raiders).
-* **Tool:** The modern **`RestClient`** is used to handle synchronous, paginated API calls, demonstrating knowledge of iterating through hundreds of records across multiple pages.
-* **Transformation/Load:** The service maps complex, nested JSON objects (using **Records/DTOs**) into a clean, normalized relational model (JPA Entities).
+- **Extraction:** Data is sourced from the Metaforge ARC Raiders API (https://metaforge.app/arc-raiders).
+- **Tool:** The modern **`RestClient`** is used to handle synchronous, paginated API calls, demonstrating knowledge of iterating through hundreds of records across multiple pages.
+- **Transformation/Load:** The service maps complex, nested JSON objects (using **Records/DTOs**) into a clean, normalized relational model (JPA Entities).
 
 ### 2. Domain Model & Core Logic
 
-* **Core Entities:** `Item`, `GameMap`, `Area` (Loot Zone), and `LootType`.
-* **Relationship Showcase:** An `Area` (Loot Zone) maintains a **Many-to-Many relationship** with multiple `LootType` categories (e.g., a single zone can spawn both 'Industrial' and 'Mechanical' loot).
-* **Planner Algorithm (JPQL):** The core logic is executed via a single, highly optimized **JPQL query** that performs a `JOIN` across three tables and aggregates the results using a `COUNT` and `GROUP BY` clause. This returns a prioritized list of maps for any given item type.
+- **Core Entities:** `Item`, `GameMap`, `Area` (Loot Zone), and `LootType`.
+- **Relationship Showcase:** An `Area` (Loot Zone) maintains a **Many-to-Many relationship** with multiple `LootType` categories (e.g., a single zone can spawn both 'Industrial' and 'Mechanical' loot).
+- **Planner Algorithm (JPQL):** The core logic is executed via a single, highly optimized **JPQL query** that performs a `JOIN` across three tables and aggregates the results using a `COUNT` and `GROUP BY` clause. This returns a prioritized list of maps for any given item type.
 
 ---
 
@@ -60,14 +60,14 @@ This project features a custom data synchronization service, demonstrating integ
 
 The API provides comprehensive endpoints for raid planning, item search, and enemy targeting.
 
-| Endpoint | Method | Functionality Showcase |
-| :--- | :--- | :--- |
-| `/api/items?search={term}` | `GET` | **Search Index:** Fetches items with partial, case-insensitive search (`LIKE` query). |
-| `/api/items/recommendation?itemName={name}` | `GET` | **Legacy Endpoint:** Basic map recommendation by single item. |
-| `/api/planner/generate-route` | `POST` | **Advanced Route Planning:** Accepts items, enemies, and routing profile. Returns optimized routes using **multi-start nearest-neighbor + 2-opt TSP algorithm**. |
-| `/api/enemies?search={term}` | `GET` | **Enemy Search:** Searches ARC enemies by name (e.g., "Sentinel", "Guardian"). |
-| `/api/enemies/{id}` | `GET` | **Enemy Details:** Fetches specific enemy spawn details by UUID. |
-| `/api/enemies/types` | `GET` | **Enemy Categories:** Returns distinct enemy type classifications. |
+| Endpoint                                    | Method | Functionality Showcase                                                                                                                                           |
+| :------------------------------------------ | :----- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/items?search={term}`                  | `GET`  | **Search Index:** Fetches items with partial, case-insensitive search (`LIKE` query).                                                                            |
+| `/api/items/recommendation?itemName={name}` | `GET`  | **Legacy Endpoint:** Basic map recommendation by single item.                                                                                                    |
+| `/api/planner/generate-route`               | `POST` | **Advanced Route Planning:** Accepts items, enemies, and routing profile. Returns optimized routes using **multi-start nearest-neighbor + 2-opt TSP algorithm**. |
+| `/api/enemies?search={term}`                | `GET`  | **Enemy Search:** Searches ARC enemies by name (e.g., "Sentinel", "Guardian").                                                                                   |
+| `/api/enemies/{id}`                         | `GET`  | **Enemy Details:** Fetches specific enemy spawn details by UUID.                                                                                                 |
+| `/api/enemies/types`                        | `GET`  | **Enemy Categories:** Returns distinct enemy type classifications.                                                                                               |
 
 ---
 
@@ -77,8 +77,8 @@ To run the application, you only need **Java 21** and **Docker Desktop** install
 
 ### Prerequisites
 
-* Java Development Kit (JDK) 21
-* Docker Desktop (Running)
+- Java Development Kit (JDK) 21
+- Docker Desktop (Running)
 
 ### Setup & Run
 
@@ -103,20 +103,20 @@ To run the application, you only need **Java 21** and **Docker Desktop** install
 
 ## Completed Features
 
-* ✅ **Multiple Item Targets & Route Planning:** Multi-start nearest-neighbor + 2-opt optimization for efficient multi-zone routes
-* ✅ **Routing Profiles:** Four specialized modes (PURE_SCAVENGER, EASY_EXFIL, AVOID_PVP, SAFE_EXFIL)
-* ✅ **ARC Enemy Targeting:** Search and target specific enemy spawns with route integration
-* ✅ **Enemy Proximity Scoring:** Routes automatically optimize for passing near target enemies
+- ✅ **Multiple Item Targets & Route Planning:** Multi-start nearest-neighbor + 2-opt optimization for efficient multi-zone routes
+- ✅ **Routing Profiles:** Four specialized modes (PURE_SCAVENGER, EASY_EXFIL, AVOID_PVP, SAFE_EXFIL)
+- ✅ **ARC Enemy Targeting:** Search and target specific enemy spawns with route integration
+- ✅ **Enemy Proximity Scoring:** Routes automatically optimize for passing near target enemies
 
 ## Future Improvements
 
-* **Enhanced Map Visualization:** Improve interactive map UI with better route visualization and waypoint display
-* **Quest Integration:** Add quest objectives as route targets (e.g., "The Major's Footlocker" quest)
-* **Crafting Components:** Integrate workbench upgrades and crafting recipe components as plannable targets
-* **Target Prioritization:** Allow users to weight importance of different targets (items vs enemies vs quests)
+- **Enhanced Map Visualization:** Improve interactive map UI with better route visualization and waypoint display
+- **Quest Integration:** Add quest objectives as route targets (e.g., "The Major's Footlocker" quest)
+- **Crafting Components:** Integrate workbench upgrades and crafting recipe components as plannable targets
+- **Target Prioritization:** Allow users to weight importance of different targets (items vs enemies vs quests)
 
 ## Stretch Goals & Future Improvements
 
-* **Authentication:** Implement Spring Security (OAuth2/JWT) to allow user customization (e.g., saving favorite routes).
+- **Authentication:** Implement Spring Security (OAuth2/JWT) to allow user customization (e.g., saving favorite routes).
 
 ---
