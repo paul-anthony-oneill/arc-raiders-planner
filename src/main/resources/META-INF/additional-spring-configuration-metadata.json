@@ -1,14 +1,14 @@
 {
-    "properties": [
-        {
-            "name": "metaforge.api.url",
-            "type": "java.lang.String",
-            "description": "The URL of the Metaforge API"
-        },
-        {
-            "name": "app.sync-on-startup",
-            "type": "java.lang.Boolean",
-            "description": "A description for 'app.sync-on-startup'"
-        }
-    ]
+  "properties": [
+    {
+      "name": "metaforge.api.url",
+      "type": "java.lang.String",
+      "description": "The URL of the Metaforge API"
+    },
+    {
+      "name": "app.sync-on-startup",
+      "type": "java.lang.Boolean",
+      "description": "A description for 'app.sync-on-startup'"
+    }
+  ]
 }
