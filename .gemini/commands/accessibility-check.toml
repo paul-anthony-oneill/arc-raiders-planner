@@ -1,0 +1,134 @@
+# Accessibility audit for components
+
+description = "Audits a component for WCAG 2.1 AA accessibility compliance."
+
+prompt = """
+**TASK: Perform a comprehensive accessibility audit.**
+
+You are an accessibility expert specializing in web applications. Audit the provided component for WCAG 2.1 Level AA compliance and general accessibility best practices.
+
+**COMPONENT CODE:**
+
+@{{component_file}}
+
+**ACCESSIBILITY AUDIT CRITERIA:**
+
+### 1. Perceivable (WCAG Principle 1)
+
+**Color Contrast:**
+- [ ] Text has minimum 4.5:1 contrast ratio (3:1 for large text >18px)
+- [ ] UI components have minimum 3:1 contrast ratio
+- [ ] Information isn't conveyed by color alone
+
+**Text Alternatives:**
+- [ ] Images have appropriate alt text
+- [ ] Decorative images have empty alt or aria-hidden
+- [ ] Icons have accessible labels
+- [ ] Complex graphics have extended descriptions
+
+**Adaptable Content:**
+- [ ] Semantic HTML used appropriately
+- [ ] Content structure is logical without CSS
+- [ ] Information and relationships are programmatically determined
+
+### 2. Operable (WCAG Principle 2)
+
+**Keyboard Access:**
+- [ ] All interactive elements keyboard accessible
+- [ ] Tab order is logical
+- [ ] No keyboard traps
+- [ ] Shortcuts don't conflict with assistive tech
+
+**Focus Management:**
+- [ ] Focus indicators visible
+- [ ] Focus trapped in modals appropriately
+- [ ] Focus returned after modal close
+- [ ] Focus moved to relevant content after actions
+
+**Touch Targets:**
+- [ ] Interactive elements minimum 48x48px
+- [ ] Adequate spacing between touch targets (8px+)
+
+**Time-Based:**
+- [ ] No automatic timeouts without warnings
+- [ ] Animations can be paused/stopped
+- [ ] Auto-updating content can be controlled
+
+### 3. Understandable (WCAG Principle 3)
+
+**Labels and Instructions:**
+- [ ] Form inputs have associated labels
+- [ ] Required fields clearly marked
+- [ ] Error messages are clear and specific
+- [ ] Instructions provided before forms
+
+**Error Handling:**
+- [ ] Errors identified in text
+- [ ] Suggestions provided for correction
+- [ ] Error prevention for critical actions
+
+**Navigation:**
+- [ ] Purpose of links clear from link text
+- [ ] Consistent navigation patterns
+- [ ] Multiple ways to find content
+
+### 4. Robust (WCAG Principle 4)
+
+**Compatibility:**
+- [ ] Valid HTML (no duplicate IDs)
+- [ ] ARIA used correctly (roles, states, properties)
+- [ ] ARIA labels don't override visible labels
+- [ ] No ARIA where native HTML works
+
+### 5. ARIA Best Practices
+
+- [ ] Landmark roles defined (main, navigation, complementary)
+- [ ] Dynamic content has live regions (aria-live)
+- [ ] Complex widgets have proper ARIA patterns
+- [ ] Hidden content properly hidden (aria-hidden, display: none)
+- [ ] Expandable sections use aria-expanded
+
+### 6. Screen Reader Testing Considerations
+
+- [ ] Heading hierarchy (h1-h6) is logical
+- [ ] Lists use proper markup (ul, ol, dl)
+- [ ] Tables have proper headers and captions
+- [ ] Form validation announces to screen readers
+- [ ] Loading states announced
+
+### 7. Material UI Accessibility
+
+- [ ] MUI components' built-in a11y features used
+- [ ] Dialog/Modal has proper focus trap
+- [ ] Autocomplete has proper ARIA relationships
+- [ ] Tooltips accessible via keyboard
+- [ ] Tab panels properly labeled
+
+**OUTPUT FORMAT:**
+
+## Accessibility Score: [Excellent / Good / Needs Improvement / Critical]
+
+## Critical Violations 🔴
+WCAG violations that must be fixed for AA compliance.
+
+## Recommended Improvements 🟡
+Best practices that would enhance accessibility.
+
+## Accessibility Strengths ✅
+What the component does well.
+
+## Testing Recommendations
+- Manual testing steps with keyboard
+- Screen reader testing scenarios (NVDA, JAWS, VoiceOver)
+- Automated testing tools to use (axe-core, WAVE)
+
+## Code Examples
+Before/after examples showing accessibility improvements.
+
+**Prioritize fixes** based on WCAG level (A/AA/AAA) and user impact.
+"""
+
+[[args]]
+name = "component_file"
+description = "The path to the component file to check for accessibility."
+required = true

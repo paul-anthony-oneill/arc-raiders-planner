@@ -10,10 +10,6 @@ requirements/
 docs/
 node_modules/
 
-### Gemini ###
-.gemini/
-GEMINI.md
-
 ### STS ###
 .apt_generated
 .classpath

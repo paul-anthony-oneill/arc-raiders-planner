@@ -1,0 +1,96 @@
+# Performance-focused audit for React components
+
+description = "Audits a component for performance issues and optimization opportunities."
+
+prompt = """
+**TASK: Perform a React performance audit.**
+
+You are a React performance expert. Analyze the provided component code for performance issues and optimization opportunities.
+
+**COMPONENT CODE:**
+
+@{{component_file}}
+
+**PERFORMANCE AUDIT CHECKLIST:**
+
+### 1. Re-render Analysis
+- [ ] Are there unnecessary re-renders due to reference changes?
+- [ ] Should components be wrapped in React.memo()?
+- [ ] Are callback functions properly memoized with useCallback()?
+- [ ] Are expensive computations memoized with useMemo()?
+- [ ] Are dependency arrays in hooks correct and minimal?
+
+### 2. Component Structure
+- [ ] Is the component tree optimized (avoid deep nesting)?
+- [ ] Should large components be split into smaller ones?
+- [ ] Are heavy components lazy-loaded with React.lazy()?
+- [ ] Is code splitting used for route-level components?
+
+### 3. Data Fetching
+- [ ] Is TanStack Query used for server state management?
+- [ ] Are queries properly configured (staleTime, cacheTime)?
+- [ ] Is data prefetched where appropriate?
+- [ ] Are there N+1 query problems?
+
+### 4. List Rendering
+- [ ] Are lists virtualized if they contain many items (>100)?
+- [ ] Are proper keys used (not array indices if items can reorder)?
+- [ ] Are list items memoized if they're complex?
+
+### 5. State Management
+- [ ] Is state properly collocated (not lifted unnecessarily)?
+- [ ] Is derived state computed instead of stored?
+- [ ] Are state updates batched where possible?
+- [ ] Is Context used judiciously (consider splitting contexts)?
+
+### 6. Material UI Performance
+- [ ] Is sx prop used efficiently (consider styled() for repeated styles)?
+- [ ] Are theme values accessed properly?
+- [ ] Are MUI components tree-shaken?
+
+### 7. Bundle Size
+- [ ] Are imports optimized (no barrel imports of large libraries)?
+- [ ] Are heavy dependencies dynamically imported?
+- [ ] Are there duplicate dependencies?
+
+### 8. Image and Asset Optimization
+- [ ] Are images lazy-loaded?
+- [ ] Are image sizes appropriate for display resolution?
+- [ ] Are SVGs inlined or loaded efficiently?
+
+### 9. Event Handlers
+- [ ] Are event handlers debounced/throttled where appropriate?
+- [ ] Are scroll/resize listeners optimized?
+- [ ] Are event listeners cleaned up properly?
+
+### 10. Suspense and Streaming
+- [ ] Are Suspense boundaries strategically placed?
+- [ ] Is loading UI optimized with skeleton screens?
+- [ ] Are error boundaries in place?
+
+**OUTPUT FORMAT:**
+
+## Performance Score: [Excellent / Good / Needs Improvement / Critical]
+
+## Critical Performance Issues 🔴
+Issues causing significant performance degradation.
+
+## Optimization Opportunities 🟡
+Improvements that would enhance performance.
+
+## Performance Best Practices ✅
+What the component does well for performance.
+
+## Benchmarking Suggestions
+Specific areas to measure with React DevTools Profiler.
+
+## Code Examples
+Before/after examples showing optimizations.
+
+**Prioritize your recommendations** based on impact (high/medium/low).
+"""
+
+[[args]]
+name = "component_file"
+description = "The path to the component file to audit for performance."
+required = true

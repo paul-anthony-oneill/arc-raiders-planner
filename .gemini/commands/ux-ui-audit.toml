@@ -1,0 +1,66 @@
+# This file defines a custom slash command for the Gemini CLI.
+# The command name is derived from its file path.
+# For example, saving this as '.gemini/commands/ux-ui-audit.toml' will create the '/uxuiaudit' command.
+# Saving it as '.gemini/commands/ux/ui-audit.toml' would create '/ux:ui-audit'.
+
+# The description that shows up in help menus.
+description = "Audits a component's UX/UI against project guidelines."
+
+# The prompt that will be sent to the model.
+# The Gemini CLI replaces @-file paths with their content and substitutes arguments.
+prompt = """
+**TASK: Perform a UX/UI audit.**
+
+Please act as an expert UX/UI designer and developer. Your task is to audit the provided component code against the established design and user experience guidelines for the ARC Raiders Loot Planner project.
+
+**UI GUIDELINES:**
+
+@{guidelines/ux-guidelines/ui.md}
+
+**UX GUIDELINES:**
+
+@{guidelines/ux-guidelines/ux.md}
+
+**COMPONENT CODE TO AUDIT:**
+
+@{{component_file}}
+
+**INSTRUCTIONS:**
+
+Based on the UI and UX guidelines provided, please audit the component code.
+
+1. **Identify any specific areas that violate the guidelines.** For each violation, cite the specific guideline that is being broken and explain why it's problematic.
+
+2. **For each violation, cite the specific guideline** that is being broken with a direct quote or reference.
+
+3. **Provide clear, actionable feedback and code examples for improvement.** Show specific code snippets demonstrating how to fix the issues.
+
+4. **If the component is compliant, confirm that** and highlight how it adheres to best practices from the guidelines.
+
+5. **Consider the following aspects in your audit:**
+   - Visual design (spacing, typography, color usage, elevation)
+   - Component composition and Material UI v7 patterns
+   - Accessibility (ARIA labels, keyboard navigation, contrast)
+   - Responsive design and breakpoint handling
+   - User flow and interaction patterns
+   - Loading states, error states, and empty states
+   - Performance considerations (memoization, lazy loading)
+   - Gaming aesthetic and ARC Raiders brand alignment
+   - TypeScript type safety and props design
+
+**Structure your response clearly in Markdown.**
+
+Use the following format:
+- **Summary**: Brief overview of audit findings
+- **Violations**: List of issues with guideline references
+- **Recommendations**: Specific improvements with code examples
+- **Strengths**: What the component does well (if applicable)
+
+"""
+
+# Defines the arguments the command expects.
+# In this case, it expects one argument named 'component_file'.
+[[args]]
+name = "component_file"
+description = "The path to the component file to audit."
+required = true
