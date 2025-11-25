@@ -1,8 +1,7 @@
 import React from 'react'
 import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { Area, EnemySpawn, RoutingProfile } from './types'
-import L from 'leaflet'
+import type { Area, EnemySpawn, RoutingProfile, MapMarker } from './types'
 
 interface MapProps {
     mapName: string
@@ -14,6 +13,7 @@ interface MapProps {
     routingProfile?: RoutingProfile
     showRoutePath?: boolean
     enemySpawns?: EnemySpawn[]
+    questMarkers?: MapMarker[]
 }
 
 // Custom icon setup
@@ -88,6 +88,26 @@ const createNumberedIcon = (number: number, isDanger: boolean = false) => {
     })
 }
 
+const questIcon = L.divIcon({
+    className: 'quest-marker',
+    html: `<div style="
+        background-color: #2196F3;
+        color: white;
+        font-weight: bold;
+        font-size: 16px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    ">?</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+});
+
 const MapComponent: React.FC<MapProps> = ({
     mapName,
     areas,
@@ -98,6 +118,7 @@ const MapComponent: React.FC<MapProps> = ({
     routingProfile,
     showRoutePath = true,
     enemySpawns = [],
+    questMarkers = [],
 }) => {
     const bounds: L.LatLngBoundsLiteral = [
         [-1000, -1000],
@@ -336,6 +357,20 @@ const MapComponent: React.FC<MapProps> = ({
                         </Marker>
                     )
                 )}
+                {/* Render quest markers */}
+                {questMarkers.map((marker) => (
+                    <Marker
+                        key={`quest-marker-${marker.id}`}
+                        position={[marker.lat, marker.lng]}
+                        icon={questIcon}
+                    >
+                        <Popup>
+                            <strong>Quest Objective</strong>
+                            <br />
+                            {marker.name}
+                        </Popup>
+                    </Marker>
+                ))}
             </MapContainer>
 
             {/* Legend */}

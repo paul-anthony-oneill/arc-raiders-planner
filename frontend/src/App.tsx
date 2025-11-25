@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from './Sidebar'
 import DataHUD from './DataHUD'
 import MapComponent from './MapComponent'
 import MapEditor from './MapEditor'
 import { RoutingProfile } from './types'
-import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest } from './types'
+import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest, Quest } from './types'
+import QuestSelector from './QuestSelector';
+import { fetchQuests } from './api/questApi';
 import './App.css'
 
 const API_PLAN_URL = '/api/items/plan'
@@ -13,11 +15,14 @@ function App() {
     // State
     const [loadout, setLoadout] = useState<Item[]>([])
     const [selectedEnemyTypes, setSelectedEnemyTypes] = useState<EnemyType[]>([])
+    const [quests, setQuests] = useState<Quest[]>([])
+    const [selectedQuestIds, setSelectedQuestIds] = useState<string[]>([])
     const [isCalculating, setIsCalculating] = useState(false)
     const [mapData, setMapData] = useState<{
         areas: Area[]
         name: string
     } | null>(null)
+    const [recommendedRoutes, setRecommendedRoutes] = useState<PlannerResponse[]>([])
     const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null) // Store route separately
     const [stats, setStats] = useState<any | null>(null)
     const [showEditor, setShowEditor] = useState(false)
@@ -26,6 +31,19 @@ function App() {
     // Routing configuration
     const [routingProfile, setRoutingProfile] = useState<RoutingProfile>(RoutingProfile.PURE_SCAVENGER)
     const [hasRaiderKey, setHasRaiderKey] = useState<boolean>(false)
+
+    useEffect(() => {
+        const loadQuests = async () => {
+            try {
+                const fetchedQuests = await fetchQuests();
+                setQuests(fetchedQuests);
+            } catch (error) {
+                console.error("Failed to fetch quests:", error);
+            }
+        };
+        loadQuests();
+    }, []);
+
 
     // Handlers
     const handleAddToLoadout = (item: Item) => {
@@ -58,7 +76,7 @@ function App() {
     }
 
     const handleCalculateRoute = async () => {
-        if (loadout.length === 0 && selectedEnemyTypes.length === 0) return
+        if (loadout.length === 0 && selectedEnemyTypes.length === 0 && selectedQuestIds.length === 0) return
 
         setIsCalculating(true)
         setStats(null)
@@ -68,6 +86,7 @@ function App() {
             const requestBody: PlannerRequest = {
                 targetItemNames: loadout.map((i) => i.name),
                 targetEnemyTypes: selectedEnemyTypes,
+                targetQuestIds: selectedQuestIds,
                 hasRaiderKey: hasRaiderKey,
                 routingProfile: routingProfile,
             }
@@ -83,6 +102,7 @@ function App() {
             }
 
             const plans: PlannerResponse[] = await planRes.json()
+            setRecommendedRoutes(plans);
 
             if (plans.length > 0) {
                 const bestPlan = plans[0]
@@ -142,6 +162,10 @@ function App() {
                     selectedEnemyTypes={selectedEnemyTypes}
                     onAddEnemyType={handleAddEnemyType}
                     onRemoveEnemyType={handleRemoveEnemyType}
+                    quests={quests}
+                    selectedQuestIds={selectedQuestIds}
+                    onSelectQuest={(questId) => setSelectedQuestIds([...selectedQuestIds, questId])}
+                    onDeselectQuest={(questId) => setSelectedQuestIds(selectedQuestIds.filter(id => id !== questId))}
                     // Routing props
                     routingProfile={routingProfile}
                     setRoutingProfile={setRoutingProfile}
@@ -188,6 +212,7 @@ function App() {
                                 routingProfile={routingProfile}
                                 showRoutePath={true}
                                 enemySpawns={activeRoute?.nearbyEnemySpawns || []}
+                                questMarkers={activeRoute?.questMarkers || []}
                             />
                         </div>
                     ) : (

@@ -4,14 +4,18 @@ import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDataResponse;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDto;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeMapDataResponse;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeMarkerDto;
+import com.pauloneill.arcraidersplanner.dto.MetaforgeQuestDataResponse;
+import com.pauloneill.arcraidersplanner.dto.MetaforgeQuestDto;
 import com.pauloneill.arcraidersplanner.model.GameMap;
 import com.pauloneill.arcraidersplanner.model.Item;
 import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.model.MapMarker;
+import com.pauloneill.arcraidersplanner.model.Quest;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.LootAreaRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.repository.QuestRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -34,19 +38,22 @@ public class MetaforgeSyncService {
     private final MapMarkerRepository markerRepository;
     private final GameMapRepository gameMapRepository;
     private final CoordinateCalibrationService calibrationService;
+    private final QuestRepository questRepository;
 
     @Value("${metaforge.api.url}")
     private String metaforgeApiUrl;
 
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
             LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository,
-            GameMapRepository gameMapRepository, CoordinateCalibrationService calibrationService) {
+            GameMapRepository gameMapRepository, CoordinateCalibrationService calibrationService,
+            QuestRepository questRepository) {
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
         this.markerRepository = markerRepository;
         this.gameMapRepository = gameMapRepository;
         this.calibrationService = calibrationService;
+        this.questRepository = questRepository;
     }
 
     @Transactional
@@ -181,5 +188,52 @@ public class MetaforgeSyncService {
             }
         }
         log.info("--- MARKER SYNC COMPLETE ---");
+    }
+
+    @Transactional
+    public void syncQuests() {
+        log.info("--- STARTING QUEST SYNC ---");
+        int currentPage = 1;
+        int totalPages = 1;
+        int totalQuestsSynced = 0;
+
+        do {
+            String uri = "/arc-raiders/quests?page=" + currentPage;
+            log.info("Fetching quests from URI: {}{}", metaforgeApiUrl, uri);
+
+            var response = restClient.get()
+                    .uri(metaforgeApiUrl + uri)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<MetaforgeQuestDataResponse<MetaforgeQuestDto>>() {
+                    });
+
+            if (response == null || response.data() == null) {
+                log.error("API returned null response for page {}", currentPage);
+                break;
+            }
+
+            totalPages = response.pagination().totalPages();
+            List<MetaforgeQuestDto> externalQuests = response.data();
+
+            for (MetaforgeQuestDto dto : externalQuests) {
+                Optional<Quest> existingQuest = questRepository.findById(dto.id());
+                Quest questToSave = existingQuest.orElse(new Quest());
+
+                questToSave.setId(dto.id());
+                questToSave.setName(dto.name());
+
+                List<MapMarker> markers = markerRepository.findByCategoryAndSubcategory("quests", dto.id());
+                questToSave.setMarkers(new java.util.HashSet<>(markers));
+
+                questRepository.save(questToSave);
+                totalQuestsSynced++;
+            }
+
+            currentPage++;
+
+        } while (currentPage <= totalPages);
+
+        log.info("Successfully synced {} quests across {} pages.", totalQuestsSynced, totalPages);
+        log.info("--- QUEST SYNC COMPLETE ---");
     }
 }

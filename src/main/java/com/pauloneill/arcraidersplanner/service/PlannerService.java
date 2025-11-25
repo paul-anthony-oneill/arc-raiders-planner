@@ -10,6 +10,7 @@ import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.repository.QuestRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -25,67 +26,81 @@ public class PlannerService {
     private final GameMapRepository gameMapRepository;
     private final MapMarkerRepository mapMarkerRepository;
     private final EnemyService enemyService;
+    private final QuestRepository questRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PlannerService(ItemRepository itemRepository, GameMapRepository gameMapRepository,
-            MapMarkerRepository mapMarkerRepository, EnemyService enemyService) {
+            MapMarkerRepository mapMarkerRepository, EnemyService enemyService, QuestRepository questRepository) {
         this.itemRepository = itemRepository;
         this.gameMapRepository = gameMapRepository;
         this.mapMarkerRepository = mapMarkerRepository;
         this.enemyService = enemyService;
+        this.questRepository = questRepository;
     }
 
     public List<PlannerResponseDto> generateRoute(PlannerRequestDto request) {
-        Set<String> requiredLootTypes = resolveLootTypes(request.targetItemNames());
+        Set<String> requiredLootTypes = new HashSet<>();
+        if (request.targetItemNames() != null) {
+            requiredLootTypes = resolveLootTypes(request.targetItemNames());
+        }
 
-        // Get all spawns of target enemy types if specified
         List<MapMarker> allEnemySpawns = Collections.emptyList();
         if (request.targetEnemyTypes() != null && !request.targetEnemyTypes().isEmpty()) {
             allEnemySpawns = enemyService.getSpawnsByTypes(request.targetEnemyTypes());
         }
 
-        // Require either items OR enemies to be specified
-        if (requiredLootTypes.isEmpty() && allEnemySpawns.isEmpty()) {
+        List<MapMarker> questMarkers = new ArrayList<>();
+        if (request.targetQuestIds() != null && !request.targetQuestIds().isEmpty()) {
+            List<Quest> quests = questRepository.findAllById(request.targetQuestIds());
+            for (Quest quest : quests) {
+                questMarkers.addAll(quest.getMarkers());
+            }
+        }
+
+        if (requiredLootTypes.isEmpty() && allEnemySpawns.isEmpty() && questMarkers.isEmpty()) {
             return Collections.emptyList();
         }
 
         List<GameMap> maps = gameMapRepository.findAllWithAreas();
         List<PlannerResponseDto> results = new ArrayList<>();
 
-        for (GameMap map : maps) {
-            // 1. Identify Relevant Areas
+        Map<GameMap, List<MapMarker>> questMarkersByMap = questMarkers.stream()
+                .collect(Collectors.groupingBy(MapMarker::getGameMap));
+
+        List<GameMap> mapsToIterate = maps;
+        if (!questMarkers.isEmpty()) {
+            mapsToIterate = new ArrayList<>(questMarkersByMap.keySet());
+        }
+
+        final Set<String> finalRequiredLootTypes = requiredLootTypes;
+        for (GameMap map : mapsToIterate) {
             List<Area> relevantAreas = map.getAreas().stream()
                     .filter(area -> area.getLootTypes().stream()
-                            .anyMatch(lt -> requiredLootTypes.contains(lt.getName())))
+                            .anyMatch(lt -> finalRequiredLootTypes.contains(lt.getName())))
                     .collect(Collectors.toList());
 
-            // 2. Filter enemy spawns for this map
             List<MapMarker> enemySpawnsOnMap = allEnemySpawns.stream()
                     .filter(e -> e.getGameMap().getId().equals(map.getId()))
                     .toList();
 
-            // Skip map if it has no relevant areas AND no target enemy spawns
-            if (relevantAreas.isEmpty() && enemySpawnsOnMap.isEmpty())
-                continue;
+            List<MapMarker> questMarkersOnMap = questMarkersByMap.getOrDefault(map, Collections.emptyList());
 
-            // 3. Identify "Danger Zones" (High Tier Areas) for PvP modes
+            if (relevantAreas.isEmpty() && enemySpawnsOnMap.isEmpty() && questMarkersOnMap.isEmpty()) {
+                continue;
+            }
+
             List<Area> dangerZones = map.getAreas().stream()
                     .filter(a -> a.getLootAbundance() != null && a.getLootAbundance() == 1)
                     .toList();
 
-            // 4. Identify Extraction Points
-            // Premium extraction: Raider Hatches (requires key + specific profiles)
-            // Generic extraction: Standard extraction markers (always available)
             List<MapMarker> extractionMarkers;
             if (request.hasRaiderKey() && (request.routingProfile() == PlannerRequestDto.RoutingProfile.EASY_EXFIL
                     || request.routingProfile() == PlannerRequestDto.RoutingProfile.SAFE_EXFIL)) {
-                // Premium mode: Use Raider Hatches
                 extractionMarkers = mapMarkerRepository.findByGameMapId(map.getId()).stream()
                         .filter(m -> "hatch".equalsIgnoreCase(m.getSubcategory()))
                         .toList();
                 log.debug("Using Raider Hatches: found {} hatches for map {}", extractionMarkers.size(), map.getName());
             } else {
-                // Standard mode: Use generic extraction markers
                 extractionMarkers = mapMarkerRepository.findByGameMapId(map.getId()).stream()
                         .filter(m -> "extraction".equalsIgnoreCase(m.getSubcategory()))
                         .toList();
@@ -93,9 +108,8 @@ public class PlannerService {
                         map.getName());
             }
 
-            // 5. Calculate Score based on Profile (including enemy proximity)
             RouteResult route = calculateRouteAndScore(relevantAreas, requiredLootTypes, request.routingProfile(),
-                    dangerZones, extractionMarkers, enemySpawnsOnMap, map);
+                    dangerZones, extractionMarkers, enemySpawnsOnMap, map, questMarkersOnMap);
 
             PlannerResponseDto response = new PlannerResponseDto(
                     map.getId(),
@@ -105,7 +119,7 @@ public class PlannerService {
                     route.extractionPoint,
                     route.extractionLat,
                     route.extractionLng,
-                    route.enemySpawns // Already converted to EnemySpawnDto in RouteResult
+                    route.enemySpawns
             );
             log.debug("Route for {}: extraction={}, coords=[{}, {}]", map.getName(), route.extractionPoint,
                     route.extractionLat, route.extractionLng);
@@ -127,7 +141,8 @@ public class PlannerService {
             List<Area> dangerZones,
             List<MapMarker> extractionMarkers,
             List<MapMarker> targetEnemies,
-            GameMap map) {
+            GameMap map,
+            List<MapMarker> questMarkers) {
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
         if (profile == PlannerRequestDto.RoutingProfile.PURE_SCAVENGER) {
@@ -156,8 +171,28 @@ public class PlannerService {
             areaScores.put(area, score);
         }
 
+        // Create temporary "areas" for quest markers and give them a high score
+        List<Area> questMarkerAreas = new ArrayList<>();
+        if (questMarkers != null) {
+            for (MapMarker questMarker : questMarkers) {
+                Area area = new Area();
+                area.setId(Math.round(Math.random() * 100000));
+                area.setName(questMarker.getName());
+                area.setMapX(questMarker.getLng().intValue());
+                area.setMapY(questMarker.getLat().intValue());
+                area.setCoordinates(String.format("[[%f,%f],[%f,%f]]", questMarker.getLat() - 5, questMarker.getLng() - 5, questMarker.getLat() + 5, questMarker.getLng() + 5));
+                area.setLootTypes(new HashSet<>());
+                questMarkerAreas.add(area);
+                areaScores.put(area, 10000.0); // High score to prioritize
+            }
+        }
+
+        List<Area> allStops = new ArrayList<>(areas);
+        allStops.addAll(questMarkerAreas);
+
+
         // Filter out areas with negative scores (too dangerous)
-        List<Area> viableAreas = areas.stream().filter(a -> areaScores.get(a) > 0).toList();
+        List<Area> viableAreas = allStops.stream().filter(a -> areaScores.getOrDefault(a, 0.0) > 0).toList();
         if (viableAreas.isEmpty()) {
             log.debug("No viable areas found - returning fallback extraction point if available");
             List<EnemySpawnDto> emptySpawns = convertToEnemySpawnDtos(targetEnemies, Collections.emptyList());
@@ -197,7 +232,7 @@ public class PlannerService {
         double totalScore = 0;
         for (int i = 0; i < path.size(); i++) {
             Area current = path.get(i);
-            totalScore += areaScores.get(current);
+            totalScore += areaScores.getOrDefault(current, 0.0);
 
             // Check Safety for PvP Modes when transitioning to next area
             if (i < path.size() - 1) {

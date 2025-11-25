@@ -23,6 +23,7 @@ public class StartupRunner implements CommandLineRunner {
         try {
             syncService.syncItems();
             syncService.syncMarkers();
+            syncService.syncQuests();
         } catch (Exception e) {
             log.error("Sync failed : ", e);
         }

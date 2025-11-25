@@ -20,4 +20,6 @@ public interface MapMarkerRepository extends JpaRepository<MapMarker, String> {
 
     // Get specific markers by IDs (for planning)
     List<MapMarker> findByIdIn(List<String> ids);
+
+    List<MapMarker> findByCategoryAndSubcategory(String category, String subcategory);
 }

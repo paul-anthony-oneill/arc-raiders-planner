@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import ItemIndex from "./ItemIndex";
 import EnemyIndex from "./EnemyIndex";
 import { RoutingProfile } from "./types";
-import type { Item, EnemyType } from "./types";
+import type { Item, EnemyType, Quest } from "./types";
 
 interface SidebarProps {
   onAddToLoadout: (item: Item) => void;
@@ -15,6 +15,12 @@ interface SidebarProps {
   onAddEnemyType: (enemyType: EnemyType) => void;
   selectedEnemyTypes: EnemyType[];
   onRemoveEnemyType: (index: number) => void;
+
+  // Quest support
+  quests: Quest[];
+  selectedQuestIds: string[];
+  onSelectQuest: (questId: string) => void;
+  onDeselectQuest: (questId: string) => void;
 
   // Routing Controls
   routingProfile: RoutingProfile;
@@ -32,12 +38,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAddEnemyType,
   selectedEnemyTypes,
   onRemoveEnemyType,
+  quests,
+  selectedQuestIds,
+  onSelectQuest,
+  onDeselectQuest,
   routingProfile,
   setRoutingProfile,
   hasRaiderKey,
   setHasRaiderKey,
 }) => {
-  const [targetType, setTargetType] = useState<"items" | "enemies">("items");
+  const [targetType, setTargetType] = useState<"items" | "enemies" | "quests">("items");
   return (
     <aside className="flex flex-col h-full border-r-2 border-retro-sand/20 bg-retro-dark/90 relative overflow-hidden">
       {/* CRT Overlay for Sidebar */}
@@ -82,16 +92,33 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               ARC Enemies
             </button>
+            <button
+              onClick={() => setTargetType("quests")}
+              className={`flex-1 py-2 px-3 text-xs font-mono uppercase tracking-wider transition-all ${
+                targetType === "quests"
+                  ? "bg-retro-blue text-retro-black border border-retro-blue"
+                  : "bg-retro-black/50 text-retro-sand-dim border border-retro-sand/20 hover:border-retro-blue/50"
+              }`}
+            >
+              Quests
+            </button>
           </div>
 
           {/* Conditional Rendering */}
           <div className="opacity-90 transform scale-95 origin-top-left w-[105%]">
             {targetType === "items" ? (
               <ItemIndex onItemSelected={onAddToLoadout} />
-            ) : (
+            ) : targetType === "enemies" ? (
               <EnemyIndex
                 onEnemyTypeSelected={onAddEnemyType}
                 selectedEnemyTypes={selectedEnemyTypes}
+              />
+            ) : (
+              <QuestSelector
+                quests={quests}
+                selectedQuestIds={selectedQuestIds}
+                onSelectQuest={onSelectQuest}
+                onDeselectQuest={onDeselectQuest}
               />
             )}
           </div>
@@ -104,12 +131,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         <h3 className="text-sm text-retro-sand font-bold mb-3 uppercase tracking-wider flex justify-between items-center">
           <span>{">"} Targets</span>
           <span className="text-retro-orange">
-            {loadout.length + selectedEnemyTypes.length}/10
+            {loadout.length + selectedEnemyTypes.length + selectedQuestIds.length}/15
           </span>
         </h3>
 
         <div className="space-y-2 mb-4 max-h-32 overflow-y-auto custom-scrollbar">
-          {loadout.length === 0 && selectedEnemyTypes.length === 0 && (
+          {loadout.length === 0 && selectedEnemyTypes.length === 0 && selectedQuestIds.length === 0 && (
             <div className="text-xs text-retro-sand-dim italic text-center py-4 border border-dashed border-retro-sand-dim/30">
               NO OBJECTIVES SELECTED
             </div>
@@ -146,6 +173,25 @@ const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
           ))}
+          {selectedQuestIds.map((questId, idx) => {
+            const quest = quests.find(q => q.id === questId);
+            return (
+              <div
+                key={`quest-${questId}-${idx}`}
+                className="flex items-center justify-between bg-retro-blue/10 border border-retro-blue/30 p-2 text-sm group hover:bg-retro-blue/20 transition-colors"
+              >
+                <span className="truncate text-retro-sand font-mono">
+                  ? {quest ? quest.name : questId}
+                </span>
+                <button
+                  onClick={() => onDeselectQuest(questId)}
+                  className="text-retro-red hover:text-retro-orange px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  [X]
+                </button>
+              </div>
+            )
+          })}
         </div>
 
         {/* --- NEW: Routing Configuration --- */}
