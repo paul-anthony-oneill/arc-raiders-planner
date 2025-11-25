@@ -26,7 +26,7 @@ public class PlannerService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PlannerService(ItemRepository itemRepository, GameMapRepository gameMapRepository,
-                          MapMarkerRepository mapMarkerRepository, EnemyService enemyService) {
+            MapMarkerRepository mapMarkerRepository, EnemyService enemyService) {
         this.itemRepository = itemRepository;
         this.gameMapRepository = gameMapRepository;
         this.mapMarkerRepository = mapMarkerRepository;
@@ -53,7 +53,8 @@ public class PlannerService {
         for (GameMap map : maps) {
             // 1. Identify Relevant Areas
             List<Area> relevantAreas = map.getAreas().stream()
-                    .filter(area -> area.getLootTypes().stream().anyMatch(lt -> requiredLootTypes.contains(lt.getName())))
+                    .filter(area -> area.getLootTypes().stream()
+                            .anyMatch(lt -> requiredLootTypes.contains(lt.getName())))
                     .collect(Collectors.toList());
 
             // 2. Filter enemy spawns for this map
@@ -62,24 +63,34 @@ public class PlannerService {
                     .toList();
 
             // Skip map if it has no relevant areas AND no target enemy spawns
-            if (relevantAreas.isEmpty() && enemySpawnsOnMap.isEmpty()) continue;
+            if (relevantAreas.isEmpty() && enemySpawnsOnMap.isEmpty())
+                continue;
 
             // 3. Identify "Danger Zones" (High Tier Areas) for PvP modes
             List<Area> dangerZones = map.getAreas().stream()
                     .filter(a -> a.getLootAbundance() != null && a.getLootAbundance() == 1)
                     .toList();
 
-            // 4. Identify Raider Hatches for Exfil modes
-            List<MapMarker> raiderHatches = Collections.emptyList();
-            if (request.hasRaiderKey() && (request.routingProfile() == PlannerRequestDto.RoutingProfile.EASY_EXFIL || request.routingProfile() == PlannerRequestDto.RoutingProfile.SAFE_EXFIL)) {
-                raiderHatches = mapMarkerRepository.findByGameMapId(map.getId()).stream()
-                        .filter(m -> "Raider Hatch".equalsIgnoreCase(m.getCategory())) // Adjust category string as needed
+            // 4. Identify Extraction Points
+            // Premium extraction: Raider Hatches (requires key + specific profiles)
+            // Generic extraction: Standard extraction markers (always available)
+            List<MapMarker> extractionMarkers;
+            if (request.hasRaiderKey() && (request.routingProfile() == PlannerRequestDto.RoutingProfile.EASY_EXFIL
+                    || request.routingProfile() == PlannerRequestDto.RoutingProfile.SAFE_EXFIL)) {
+                // Premium mode: Use Raider Hatches
+                extractionMarkers = mapMarkerRepository.findByGameMapId(map.getId()).stream()
+                        .filter(m -> "hatch".equalsIgnoreCase(m.getSubcategory()))
+                        .toList();
+            } else {
+                // Standard mode: Use generic extraction markers
+                extractionMarkers = mapMarkerRepository.findByGameMapId(map.getId()).stream()
+                        .filter(m -> "extraction".equalsIgnoreCase(m.getSubcategory()))
                         .toList();
             }
 
             // 5. Calculate Score based on Profile (including enemy proximity)
             RouteResult route = calculateRouteAndScore(relevantAreas, requiredLootTypes, request.routingProfile(),
-                    dangerZones, raiderHatches, enemySpawnsOnMap);
+                    dangerZones, extractionMarkers, enemySpawnsOnMap);
 
             results.add(new PlannerResponseDto(
                     map.getId(),
@@ -87,7 +98,7 @@ public class PlannerService {
                     route.score,
                     route.path.stream().map(this::convertToAreaDto).toList(),
                     route.extractionPoint,
-                    route.enemySpawns  // Already converted to EnemySpawnDto in RouteResult
+                    route.enemySpawns // Already converted to EnemySpawnDto in RouteResult
             ));
         }
 
@@ -103,9 +114,8 @@ public class PlannerService {
             Set<String> targets,
             PlannerRequestDto.RoutingProfile profile,
             List<Area> dangerZones,
-            List<MapMarker> raiderHatches,
-            List<MapMarker> targetEnemies
-    ) {
+            List<MapMarker> extractionMarkers,
+            List<MapMarker> targetEnemies) {
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
         if (profile == PlannerRequestDto.RoutingProfile.PURE_SCAVENGER) {
@@ -120,7 +130,8 @@ public class PlannerService {
             double score = (matchCount > 1) ? (matchCount * 100) : 10;
 
             // PvP Mode Adjustment: Boost areas near map edge (distance from 0,0)
-            if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
+            if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP
+                    || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
                 double distFromCenter = Math.sqrt(Math.pow(area.getMapX(), 2) + Math.pow(area.getMapY(), 2));
                 // Add 1 point for every 100 units away from center
                 score += (distFromCenter / 100.0);
@@ -152,7 +163,8 @@ public class PlannerService {
             // Check Safety for PvP Modes when transitioning to next area
             if (i < path.size() - 1) {
                 Area next = path.get(i + 1);
-                if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
+                if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP
+                        || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
                     if (isRouteDangerous(current, next, dangerZones)) {
                         totalScore -= 200; // Heavy penalty for crossing a High Tier zone
                     }
@@ -162,19 +174,33 @@ public class PlannerService {
 
         Area current = path.get(path.size() - 1); // Last area for exfil calculation
 
-        // --- EXFIL LOGIC (EASY_EXFIL & SAFE_EXFIL) ---
+        // --- EXTRACTION LOGIC ---
+        // Calculate nearest extraction point and apply scoring bonus for proximity
         String bestExit = null;
-        if (!raiderHatches.isEmpty()) {
+        if (!extractionMarkers.isEmpty()) {
             final Area finalLootZone = current;
-            MapMarker nearestHatch = raiderHatches.stream()
+            MapMarker nearestExtraction = extractionMarkers.stream()
                     .min(Comparator.comparingDouble(m -> distance(finalLootZone, m)))
                     .orElse(null);
 
-            if (nearestHatch != null) {
-                double distToExit = distance(finalLootZone, nearestHatch);
-                // Bonus: Short run to exit = +50 points max, degrading with distance
-                totalScore += Math.max(0, 50 - (distToExit / 10.0));
-                bestExit = nearestHatch.getName();
+            if (nearestExtraction != null) {
+                double distToExit = distance(finalLootZone, nearestExtraction);
+
+                // Apply distance-based scoring bonus for extraction proximity
+                // Premium modes (EASY_EXFIL, SAFE_EXFIL) get stronger bonuses
+                if (profile == PlannerRequestDto.RoutingProfile.EASY_EXFIL
+                        || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
+                    // Stronger bonus for extraction-focused modes: +50 points max
+                    totalScore += Math.max(0, 50 - (distToExit / 10.0));
+                } else {
+                    // Modest bonus for other modes: +25 points max
+                    totalScore += Math.max(0, 25 - (distToExit / 20.0));
+                }
+
+                // Use marker name if available, otherwise use generic label
+                bestExit = (nearestExtraction.getName() != null && !nearestExtraction.getName().isBlank())
+                        ? nearestExtraction.getName()
+                        : "Extraction Point";
             }
         }
 
@@ -194,11 +220,14 @@ public class PlannerService {
     // --- ROUTE OPTIMIZATION HELPERS ---
 
     /**
-     * Finds the optimal route using multi-start nearest-neighbor followed by 2-opt improvement.
-     * Tries starting from each area and picks the route with minimum total distance.
+     * Finds the optimal route using multi-start nearest-neighbor followed by 2-opt
+     * improvement.
+     * Tries starting from each area and picks the route with minimum total
+     * distance.
      */
     private List<Area> findOptimalRoute(List<Area> areas) {
-        if (areas.size() <= 2) return new ArrayList<>(areas);
+        if (areas.size() <= 2)
+            return new ArrayList<>(areas);
 
         List<Area> bestRoute = null;
         double bestDistance = Double.MAX_VALUE;
@@ -219,7 +248,8 @@ public class PlannerService {
     }
 
     /**
-     * Constructs a route using nearest-neighbor heuristic starting from a specific area.
+     * Constructs a route using nearest-neighbor heuristic starting from a specific
+     * area.
      */
     private List<Area> nearestNeighborRoute(Area start, List<Area> allAreas) {
         List<Area> route = new ArrayList<>();
@@ -257,9 +287,12 @@ public class PlannerService {
     /**
      * Improves route using 2-opt algorithm to eliminate edge crossings.
      * Iteratively swaps edge pairs if it reduces total distance.
+     * WHY: Ensures routes don't zigzag unnecessarily (e.g., A→B→C when A→C→B is
+     * shorter)
      */
     private List<Area> twoOptImprove(List<Area> route) {
-        if (route.size() <= 3) return route;
+        if (route.size() < 3)
+            return route;
 
         List<Area> improved = new ArrayList<>(route);
         boolean foundImprovement = true;
@@ -269,9 +302,6 @@ public class PlannerService {
 
             for (int i = 0; i < improved.size() - 2; i++) {
                 for (int j = i + 2; j < improved.size(); j++) {
-                    // Skip adjacent edges
-                    if (j == improved.size() - 1 && i == 0) continue;
-
                     // Calculate current distance: i→(i+1) and j→(j+1)
                     double currentDist = distance(improved.get(i), improved.get(i + 1));
                     if (j < improved.size() - 1) {
@@ -300,7 +330,8 @@ public class PlannerService {
                         break;
                     }
                 }
-                if (foundImprovement) break;
+                if (foundImprovement)
+                    break;
             }
         }
 
@@ -327,19 +358,57 @@ public class PlannerService {
         return Math.sqrt(Math.pow(a.getMapX() - m.getLng(), 2) + Math.pow(a.getMapY() - m.getLat(), 2));
     }
 
+    /**
+     * Calculates the minimum distance from an enemy marker to the route path.
+     * WHY: Enemy proximity should be measured to the actual path segments, not just
+     * area centroids
+     *
+     * @param enemy Enemy spawn marker
+     * @param path  Route path (list of areas)
+     * @return Minimum distance from enemy to any point on the route path
+     */
+    private double distanceToRoutePath(MapMarker enemy, List<Area> path) {
+        if (path.isEmpty()) {
+            return Double.MAX_VALUE;
+        }
+
+        // If only one area, use point-to-point distance
+        if (path.size() == 1) {
+            return distance(path.get(0), enemy);
+        }
+
+        // Calculate minimum distance to all route segments
+        double minDistance = Double.MAX_VALUE;
+        for (int i = 0; i < path.size() - 1; i++) {
+            Area start = path.get(i);
+            Area end = path.get(i + 1);
+
+            double segmentDist = pointToSegmentDistance(
+                    enemy.getLng(), enemy.getLat(), // Point (enemy position)
+                    start.getMapX(), start.getMapY(), // Segment start
+                    end.getMapX(), end.getMapY() // Segment end
+            );
+
+            minDistance = Math.min(minDistance, segmentDist);
+        }
+
+        return minDistance;
+    }
+
     // Check if the line between two areas intersects any High Tier Zone
     private boolean isRouteDangerous(Area start, Area end, List<Area> dangerZones) {
         for (Area danger : dangerZones) {
-            if (danger.getId().equals(start.getId()) || danger.getId().equals(end.getId())) continue;
+            if (danger.getId().equals(start.getId()) || danger.getId().equals(end.getId()))
+                continue;
 
             double dangerRadius = calculateDynamicRadius(danger);
             double distToHazard = pointToSegmentDistance(
                     danger.getMapX(), danger.getMapY(),
                     start.getMapX(), start.getMapY(),
-                    end.getMapX(), end.getMapY()
-            );
+                    end.getMapX(), end.getMapY());
 
-            if (distToHazard < dangerRadius) return true;
+            if (distToHazard < dangerRadius)
+                return true;
         }
         return false;
     }
@@ -350,7 +419,8 @@ public class PlannerService {
             // Parse JSON: [[x,y], [x,y], ...]
             List<List<Double>> coords = objectMapper.readValue(area.getCoordinates(), new TypeReference<>() {
             });
-            if (coords.isEmpty()) return 50.0;
+            if (coords.isEmpty())
+                return 50.0;
 
             // Find max distance from center to any vertex
             double maxDist = 0;
@@ -365,7 +435,8 @@ public class PlannerService {
                 // Actually, Leaflet is usually [Lat, Lng] -> [Y, X]
                 // The helper uses centroid mapX/mapY. Let's trust the max dist from centroid.
                 double d = Math.sqrt(Math.pow(area.getMapX() - px, 2) + Math.pow(area.getMapY() - py, 2));
-                if (d > maxDist) maxDist = d;
+                if (d > maxDist)
+                    maxDist = d;
             }
             return maxDist; // Safe buffer radius
         } catch (IOException e) {
@@ -376,7 +447,8 @@ public class PlannerService {
     // Math helper: Distance from Point P(px,py) to Line Segment AB
     private double pointToSegmentDistance(double px, double py, double ax, double ay, double bx, double by) {
         double l2 = Math.pow(bx - ax, 2) + Math.pow(by - ay, 2);
-        if (l2 == 0) return Math.sqrt(Math.pow(px - ax, 2) + Math.pow(py - ay, 2));
+        if (l2 == 0)
+            return Math.sqrt(Math.pow(px - ax, 2) + Math.pow(py - ay, 2));
 
         double t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
         t = Math.max(0, Math.min(1, t));
@@ -389,23 +461,24 @@ public class PlannerService {
 
     /**
      * Scores how well a route passes near target enemy spawn points.
-     * WHY: Routes that naturally pass enemies are more efficient for combined loot+hunt missions
+     * WHY: Routes that naturally pass enemies are more efficient for combined
+     * loot+hunt missions
      *
-     * @param path Route waypoints (loot areas)
+     * @param path    Route waypoints (loot areas)
      * @param enemies Target enemy spawn markers
      * @return Proximity score bonus
      */
     private double scoreEnemyProximity(List<Area> path, List<MapMarker> enemies) {
         double score = 0;
-        for (MapMarker enemy : enemies) {
-            double minDist = path.stream()
-                    .mapToDouble(area -> distance(area, enemy))
-                    .min()
-                    .orElse(Double.MAX_VALUE);
+        final double PROXIMITY_THRESHOLD = 400.0; // Match the threshold used for onRoute detection
 
-            // Within 100m = full points (100), drops off linearly
-            if (minDist < 100) {
-                score += 100 - minDist;
+        for (MapMarker enemy : enemies) {
+            // Calculate minimum distance to route path segments
+            double minDist = distanceToRoutePath(enemy, path);
+
+            // Within proximity threshold = full points, drops off linearly
+            if (minDist < PROXIMITY_THRESHOLD) {
+                score += PROXIMITY_THRESHOLD - minDist;
             }
         }
         return score;
@@ -413,10 +486,11 @@ public class PlannerService {
 
     /**
      * Converts enemy spawn markers to DTOs with route proximity information.
-     * WHY: Frontend needs to display all spawns with highlighting for those near the route
+     * WHY: Frontend needs to display all spawns with highlighting for those near
+     * the route
      *
      * @param enemies All enemy spawns of selected types on this map
-     * @param path The optimized loot route
+     * @param path    The optimized loot route
      * @return List of EnemySpawnDto with onRoute status and distances
      */
     private List<EnemySpawnDto> convertToEnemySpawnDtos(List<MapMarker> enemies, List<Area> path) {
@@ -424,7 +498,7 @@ public class PlannerService {
             return Collections.emptyList();
         }
 
-        final double PROXIMITY_THRESHOLD = 100.0; // Units for considering a spawn "on route"
+        final double PROXIMITY_THRESHOLD = 400.0; // Units for considering a spawn "on route"
 
         return enemies.stream()
                 .map(enemy -> {
@@ -432,24 +506,20 @@ public class PlannerService {
                     Boolean onRoute = false;
 
                     if (!path.isEmpty()) {
-                        // Calculate minimum distance from this spawn to any point on the route
-                        distanceToRoute = path.stream()
-                                .mapToDouble(area -> distance(area, enemy))
-                                .min()
-                                .orElse(Double.MAX_VALUE);
+                        // Calculate minimum distance from this spawn to the route path segments
+                        distanceToRoute = distanceToRoutePath(enemy, path);
 
                         onRoute = distanceToRoute < PROXIMITY_THRESHOLD;
                     }
 
                     return new EnemySpawnDto(
                             enemy.getId(),
-                            enemy.getSubcategory(),  // Enemy type (e.g., "sentinel")
+                            enemy.getSubcategory(), // Enemy type (e.g., "sentinel")
                             enemy.getGameMap().getName(),
                             enemy.getLat(),
                             enemy.getLng(),
                             onRoute,
-                            distanceToRoute
-                    );
+                            distanceToRoute);
                 })
                 .toList();
     }

@@ -47,26 +47,14 @@ export const gameCoordsToLatLng = (x: number, y: number): L.LatLngTuple => {
 }
 
 // --- HELPER: Transform Coordinates ---
-export const transformMarker = (marker: GameMarker, map: GameMap): L.LatLngTuple => {
+export const transformMarker = (marker: L.LatLngTuple, map: GameMap): L.LatLngTuple => {
     const scaleX = map.calibrationScaleX ?? 1.0
     const scaleY = map.calibrationScaleY ?? 1.0
     const offsetX = map.calibrationOffsetX ?? 0.0
     const offsetY = map.calibrationOffsetY ?? 0.0
 
-    const localX = marker.lng * scaleX + offsetX
-    const localY = marker.lat * scaleY + offsetY
-
-    return [localY, localX] as L.LatLngTuple
-}
-
-export const transformEnemyMarker = (spawn: EnemySpawn, map: GameMap): L.LatLngTuple => {
-    const scaleX = map.calibrationScaleX ?? 1.0
-    const scaleY = map.calibrationScaleY ?? 1.0
-    const offsetX = map.calibrationOffsetX ?? 0.0
-    const offsetY = map.calibrationOffsetY ?? 0.0
-
-    const localX = spawn.lng * scaleX + offsetX
-    const localY = spawn.lat * scaleY + offsetY
+    const localX = marker[1] * scaleX + offsetX
+    const localY = marker[0] * scaleY + offsetY
 
     return [localY, localX] as L.LatLngTuple
 }

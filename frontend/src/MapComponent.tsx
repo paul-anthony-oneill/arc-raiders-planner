@@ -2,7 +2,7 @@ import React from 'react'
 import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Area, EnemySpawn, RoutingProfile } from './types'
-import { transformEnemyMarker, gameCoordsToLatLng, type GameMap } from './utils/mapUtils'
+import { transformMarker, gameCoordsToLatLng, type GameMap } from './utils/mapUtils'
 import L from 'leaflet'
 
 interface MapProps {
@@ -125,12 +125,14 @@ const MapComponent: React.FC<MapProps> = ({
     // Get route path coordinates for polyline
     const routePathCoords: L.LatLngExpression[] = routePath.map((area) => coordsToLatLng(area.mapX, area.mapY))
 
+    const spawnCoords: L.LatLngTuple = [0, 0] // Placeholder, will be set per spawn
+
     // Find extraction point coordinates (if exists)
     let extractionCoords: L.LatLngTuple | null = null
     if (extractionPoint && routePath.length > 0) {
         // Use last area in route as approximate extraction location
         const lastArea = routePath[routePath.length - 1]
-        extractionCoords = coordsToLatLng(lastArea.mapX, lastArea.mapY)
+        extractionCoords = [lastArea.mapY, lastArea.mapX] as L.LatLngTuple
     }
 
     // Check if an area is in the route
@@ -298,7 +300,14 @@ const MapComponent: React.FC<MapProps> = ({
 
                 {/* Render extraction point marker */}
                 {extractionPoint && extractionCoords && (
-                    <Marker position={extractionCoords} icon={exitIcon}>
+                    <Marker
+                        position={
+                            gameMap
+                                ? transformMarker(extractionCoords, gameMap)
+                                : gameCoordsToLatLng(extractionCoords[0], extractionCoords[1])
+                        }
+                        icon={exitIcon}
+                    >
                         <Popup>
                             <strong>🚪 EXTRACTION POINT</strong>
                             <br />
@@ -308,33 +317,39 @@ const MapComponent: React.FC<MapProps> = ({
                 )}
 
                 {/* Render enemy spawn markers */}
-                {enemySpawns.map((spawn) => (
-                    <Marker
-                        key={spawn.id}
-                        position={
-                            gameMap
-                                ? transformEnemyMarker(spawn, gameMap)
-                                : gameCoordsToLatLng(spawn.lng, spawn.lat)
-                        }
-                        icon={createEnemyIcon(spawn.onRoute)}
-                    >
-                        <Popup>
-                            <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong>
-                            <br />
-                            <strong>{spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}</strong>
-                            <br />
-                            {spawn.distanceToRoute !== null && spawn.distanceToRoute !== undefined && (
-                                <>
-                                    Distance to route: {Math.round(spawn.distanceToRoute)} units
+                {enemySpawns.map(
+                    (spawn) => (
+                        (spawnCoords[0] = spawn.lat),
+                        (spawnCoords[1] = spawn.lng),
+                        (
+                            <Marker
+                                key={spawn.id}
+                                position={
+                                    gameMap
+                                        ? transformMarker(spawnCoords, gameMap)
+                                        : gameCoordsToLatLng(spawn.lng, spawn.lat)
+                                }
+                                icon={createEnemyIcon(spawn.onRoute)}
+                            >
+                                <Popup>
+                                    <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong>
                                     <br />
-                                </>
-                            )}
-                            {spawn.onRoute && (
-                                <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>✓ Near your route</span>
-                            )}
-                        </Popup>
-                    </Marker>
-                ))}
+                                    <strong>{spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}</strong>
+                                    <br />
+                                    {spawn.distanceToRoute !== null && spawn.distanceToRoute !== undefined && (
+                                        <>
+                                            Distance to route: {Math.round(spawn.distanceToRoute)} units
+                                            <br />
+                                        </>
+                                    )}
+                                    {spawn.onRoute && (
+                                        <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>✓ Near your route</span>
+                                    )}
+                                </Popup>
+                            </Marker>
+                        )
+                    )
+                )}
             </MapContainer>
 
             {/* Legend */}

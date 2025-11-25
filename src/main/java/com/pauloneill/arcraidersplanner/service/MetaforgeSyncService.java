@@ -38,7 +38,8 @@ public class MetaforgeSyncService {
     private String metaforgeApiUrl;
 
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
-                                LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository, GameMapRepository gameMapRepository) {
+            LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository,
+            GameMapRepository gameMapRepository) {
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
