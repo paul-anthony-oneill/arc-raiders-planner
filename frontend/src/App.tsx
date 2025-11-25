@@ -1,126 +1,128 @@
-import { useState } from 'react';
-import Sidebar from './Sidebar';
-import DataHUD from './DataHUD';
-import MapComponent from './MapComponent';
-import MapEditor from './MapEditor';
-import { RoutingProfile } from './types';
-import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest } from './types';
-import './App.css';
+import { useState } from 'react'
+import Sidebar from './Sidebar'
+import DataHUD from './DataHUD'
+import MapComponent from './MapComponent'
+import MapEditor from './MapEditor'
+import { RoutingProfile } from './types'
+import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest } from './types'
+import './App.css'
 
-const API_PLAN_URL = '/api/items/plan';
+const API_PLAN_URL = '/api/items/plan'
 
 function App() {
     // State
-    const [loadout, setLoadout] = useState<Item[]>([]);
-    const [selectedEnemyTypes, setSelectedEnemyTypes] = useState<EnemyType[]>([]);
-    const [isCalculating, setIsCalculating] = useState(false);
-    const [mapData, setMapData] = useState<{ areas: Area[], name: string } | null>(null);
-    const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null); // Store route separately
-    const [stats, setStats] = useState<any | null>(null);
-    const [showEditor, setShowEditor] = useState(false);
-    const [accessibilityMode, setAccessibilityMode] = useState(false);
+    const [loadout, setLoadout] = useState<Item[]>([])
+    const [selectedEnemyTypes, setSelectedEnemyTypes] = useState<EnemyType[]>([])
+    const [isCalculating, setIsCalculating] = useState(false)
+    const [mapData, setMapData] = useState<{
+        areas: Area[]
+        name: string
+    } | null>(null)
+    const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null) // Store route separately
+    const [stats, setStats] = useState<any | null>(null)
+    const [showEditor, setShowEditor] = useState(false)
+    const [accessibilityMode, setAccessibilityMode] = useState(false)
 
     // Routing configuration
-    const [routingProfile, setRoutingProfile] = useState<RoutingProfile>(RoutingProfile.PURE_SCAVENGER);
-    const [hasRaiderKey, setHasRaiderKey] = useState<boolean>(false);
+    const [routingProfile, setRoutingProfile] = useState<RoutingProfile>(RoutingProfile.PURE_SCAVENGER)
+    const [hasRaiderKey, setHasRaiderKey] = useState<boolean>(false)
 
     // Handlers
     const handleAddToLoadout = (item: Item) => {
         if (loadout.length < 5) {
-            setLoadout([...loadout, item]);
+            setLoadout([...loadout, item])
         }
-    };
+    }
 
     const handleRemoveFromLoadout = (index: number) => {
-        const newLoadout = [...loadout];
-        newLoadout.splice(index, 1);
-        setLoadout(newLoadout);
-    };
+        const newLoadout = [...loadout]
+        newLoadout.splice(index, 1)
+        setLoadout(newLoadout)
+    }
 
     const handleAddEnemyType = (enemyType: EnemyType) => {
         if (selectedEnemyTypes.length < 5 && !selectedEnemyTypes.includes(enemyType)) {
-            setSelectedEnemyTypes([...selectedEnemyTypes, enemyType]);
+            setSelectedEnemyTypes([...selectedEnemyTypes, enemyType])
         }
-    };
+    }
 
     const handleRemoveEnemyType = (index: number) => {
-        const newEnemyTypes = [...selectedEnemyTypes];
-        newEnemyTypes.splice(index, 1);
-        setSelectedEnemyTypes(newEnemyTypes);
-    };
+        const newEnemyTypes = [...selectedEnemyTypes]
+        newEnemyTypes.splice(index, 1)
+        setSelectedEnemyTypes(newEnemyTypes)
+    }
 
     const toggleAccessibility = () => {
-        setAccessibilityMode(!accessibilityMode);
-        document.body.classList.toggle('accessibility-mode');
-    };
+        setAccessibilityMode(!accessibilityMode)
+        document.body.classList.toggle('accessibility-mode')
+    }
 
     const handleCalculateRoute = async () => {
-        if (loadout.length === 0 && selectedEnemyTypes.length === 0) return;
+        if (loadout.length === 0 && selectedEnemyTypes.length === 0) return
 
-        setIsCalculating(true);
-        setStats(null);
+        setIsCalculating(true)
+        setStats(null)
 
         try {
             // Construct the Request Object using STATE values
             const requestBody: PlannerRequest = {
-                targetItemNames: loadout.map(i => i.name),
+                targetItemNames: loadout.map((i) => i.name),
                 targetEnemyTypes: selectedEnemyTypes,
                 hasRaiderKey: hasRaiderKey,
-                routingProfile: routingProfile
-            };
+                routingProfile: routingProfile,
+            }
 
             const planRes = await fetch(API_PLAN_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
+                body: JSON.stringify(requestBody),
+            })
 
             if (!planRes.ok) {
-                throw new Error(`Planning failed: ${planRes.status} ${planRes.statusText}`);
+                throw new Error(`Planning failed: ${planRes.status} ${planRes.statusText}`)
             }
 
-            const plans: PlannerResponse[] = await planRes.json();
+            const plans: PlannerResponse[] = await planRes.json()
 
             if (plans.length > 0) {
-                const bestPlan = plans[0];
+                const bestPlan = plans[0]
 
                 // 2. Store the active route
-                setActiveRoute(bestPlan);
+                setActiveRoute(bestPlan)
 
                 // 3. Fetch FULL map data (all areas, not just route)
-                const mapUrl = `/api/maps/${encodeURIComponent(bestPlan.mapName)}/data`;
-                const mapResponse = await fetch(mapUrl);
+                const mapUrl = `/api/maps/${encodeURIComponent(bestPlan.mapName)}/data`
+                const mapResponse = await fetch(mapUrl)
                 if (!mapResponse.ok) {
-                    throw new Error(`Failed to fetch map data: ${mapResponse.status}`);
+                    throw new Error(`Failed to fetch map data: ${mapResponse.status}`)
                 }
-                const mapJson: { areas: Area[], name: string } = await mapResponse.json();
-                setMapData(mapJson);
+                const mapJson: { areas: Area[]; name: string } = await mapResponse.json()
+                setMapData(mapJson)
 
-                // 3. Generate Stats
+                // 5. Generate Stats
                 setStats({
                     sectorName: bestPlan.mapName,
                     environment: 'LIVE FIRE ZONE',
                     lootProbability: {
                         rare: Math.min(100, Math.max(0, Math.floor(bestPlan.score))),
-                        epic: 100
+                        epic: 100,
                     },
-                    threatLevel: bestPlan.score < 0 ? 'EXTREME' : 'MEDIUM'
-                });
+                    threatLevel: bestPlan.score < 0 ? 'EXTREME' : 'MEDIUM',
+                })
             } else {
-                alert("No viable route found for this objective.");
+                alert('No viable route found for this objective.')
             }
-
         } catch (error) {
-            console.error("Calculation failed:", error);
-            alert("Failed to calculate route. System Offline.");
+            console.error('Calculation failed:', error)
+            alert('Failed to calculate route. System Offline.')
         } finally {
-            setIsCalculating(false);
+            setIsCalculating(false)
         }
-    };
+    }
 
     // Editor Mode
     if (showEditor) {
-        return <MapEditor onExit={() => setShowEditor(false)} />;
+        return <MapEditor onExit={() => setShowEditor(false)} />
     }
 
     return (
@@ -153,7 +155,8 @@ function App() {
                 {/* Top Bar / Header */}
                 <header className="h-12 border-b border-retro-sand/20 bg-retro-dark flex items-center justify-between px-4 z-30">
                     <h1 className="text-retro-sand font-display text-lg tracking-widest">
-                        TACTICAL MAP // <span className="text-retro-orange">{mapData ? mapData.name : 'NO SIGNAL'}</span>
+                        TACTICAL MAP //{' '}
+                        <span className="text-retro-orange">{mapData ? mapData.name : 'NO SIGNAL'}</span>
                     </h1>
                     <div className="flex items-center gap-4">
                         <button
@@ -180,6 +183,8 @@ function App() {
                                 areas={mapData.areas}
                                 routePath={activeRoute?.routePath || []}
                                 extractionPoint={activeRoute?.extractionPoint}
+                                extractionLat={activeRoute?.extractionLat}
+                                extractionLng={activeRoute?.extractionLng}
                                 routingProfile={routingProfile}
                                 showRoutePath={true}
                                 enemySpawns={activeRoute?.nearbyEnemySpawns || []}
@@ -194,15 +199,11 @@ function App() {
 
                 {/* Bottom HUD */}
                 <div className="h-32 flex-shrink-0 z-40">
-                    <DataHUD
-                        stats={stats}
-                        activeProfile={routingProfile}
-                        hoveredProfile={null}
-                    />
+                    <DataHUD stats={stats} activeProfile={routingProfile} hoveredProfile={null} />
                 </div>
             </div>
         </div>
-    );
+    )
 }
 
-export default App;
+export default App

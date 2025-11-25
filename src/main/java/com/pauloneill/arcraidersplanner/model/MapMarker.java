@@ -13,10 +13,10 @@ public class MapMarker {
     private String id; // UUID from the API
 
     @Column(nullable = false)
-    private Double lat; // Raw external Y
+    private Double lat; // Leaflet-ready Y coordinate (calibrated, ready for [lat,lng] format)
 
     @Column(nullable = false)
-    private Double lng; // Raw external X
+    private Double lng; // Leaflet-ready X coordinate (calibrated, ready for [lat,lng] format)
 
     private String category;    // e.g. "arc", "nature"
     private String subcategory; // e.g. "sentinel", "great-mullein"
