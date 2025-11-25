@@ -150,13 +150,13 @@ class PlannerServiceTest {
 
         // Mock Markers
         MapMarker hatchA = new MapMarker();
-        hatchA.setCategory("Raider Hatch");
+        hatchA.setSubcategory("hatch");
         hatchA.setLat(0.0); // Y
         hatchA.setLng(10.0); // X (Close)
         hatchA.setName("Easy Hatch");
 
         MapMarker hatchB = new MapMarker();
-        hatchB.setCategory("Raider Hatch");
+        hatchB.setSubcategory("hatch");
         hatchB.setLat(0.0);
         hatchB.setLng(1000.0); // X (Far)
         hatchB.setName("Hard Hatch");
@@ -209,13 +209,13 @@ class PlannerServiceTest {
 
         // Mock Raider Hatches
         MapMarker hatchA = new MapMarker();
-        hatchA.setCategory("Raider Hatch");
+        hatchA.setSubcategory("hatch");
         hatchA.setLat(0.0);
         hatchA.setLng(220.0); // Close to loot end
         hatchA.setName("Danger Hatch");
 
         MapMarker hatchB = new MapMarker();
-        hatchB.setCategory("Raider Hatch");
+        hatchB.setSubcategory("hatch");
         hatchB.setLat(250.0);
         hatchB.setLng(250.0); // Farther but safer
         hatchB.setName("Safe Hatch");
