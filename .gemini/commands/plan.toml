@@ -1,0 +1,156 @@
+description = "Create detailed implementation plan for new feature or change"
+
+prompt = """
+You are a senior full-stack engineer specializing in Spring Boot and React. Create a comprehensive implementation plan for the following task:
+
+**Task**: {{args}}
+
+## Required Plan Structure
+
+### 1. Understanding the Goal
+- Restate the objective in your own words
+- Clarify any assumptions
+- Identify affected parts of the codebase
+
+### 2. Investigation & Analysis
+**Files to examine**:
+- Backend: Controllers, Services, Repositories, DTOs
+- Frontend: Components, Types, API integration
+- Database: Current schema, needed migrations
+
+**Current patterns**:
+- Describe existing implementation patterns
+- Identify integration points
+- Note any potential conflicts
+
+### 3. Proposed Implementation
+
+#### Backend Changes (if applicable)
+**Controllers**:
+- [ ] New endpoints or modifications
+- [ ] Request/Response DTOs
+- [ ] Validation rules
+- [ ] OpenAPI annotations
+
+**Services**:
+- [ ] New business logic methods
+- [ ] Algorithm modifications (routing, recommendations)
+- [ ] Transaction boundaries
+- [ ] Error handling
+
+**Repositories**:
+- [ ] New queries (JPQL or method names)
+- [ ] EntityGraph optimization
+- [ ] Query performance considerations
+
+**DTOs**:
+- [ ] New data structures
+- [ ] Validation annotations
+- [ ] Field documentation
+
+#### Frontend Changes (if applicable)
+**Components**:
+- [ ] New components to create
+- [ ] Existing components to modify
+- [ ] Props interfaces
+- [ ] State management
+
+**Types**:
+- [ ] New TypeScript interfaces
+- [ ] API request/response types
+- [ ] Enum definitions
+
+**API Integration**:
+- [ ] New API functions
+- [ ] Error handling
+- [ ] Loading states
+
+#### Database Changes (if applicable)
+**Migration Script** (Flyway):
+- [ ] New tables or columns
+- [ ] Indexes for performance
+- [ ] Foreign key constraints
+- [ ] Rollback strategy
+
+Current migration status:
+!{ls src/main/resources/db/migration/ 2>/dev/null | tail -5}
+
+#### Testing Strategy
+**Backend Tests**:
+- [ ] Unit tests: Service layer logic
+- [ ] Integration tests: Controller endpoints
+- [ ] Repository tests: Query correctness
+
+**Frontend Tests**:
+- [ ] Component tests: UI behavior
+- [ ] Integration tests: API interaction
+- [ ] Type safety: TypeScript compilation
+
+### 4. Verification Plan
+**How to test changes work**:
+- Backend: `./mvnw test`
+- Frontend: `cd frontend && npm test`
+- Build: `./mvnw clean package && cd frontend && npm run build`
+- Manual: Specific user workflows to test
+
+**Expected outcomes**:
+- What should happen when feature works correctly
+- How to verify data persistence
+- Performance benchmarks (if applicable)
+
+### 5. Risks & Considerations
+**Potential Issues**:
+- Breaking changes to existing APIs
+- Performance implications (database queries, route calculations)
+- Database migration risks
+- State management complexity
+
+**Mitigation Strategies**:
+- How to address each risk
+- Rollback procedures
+- Gradual rollout approach
+
+### 6. Timeline & Effort
+**Estimated complexity**: [Low/Medium/High]
+
+**Subtasks breakdown**:
+1. [Subtask 1] - [Estimated time]
+2. [Subtask 2] - [Estimated time]
+3. [Subtask 3] - [Estimated time]
+
+---
+
+## Project Context Reminder
+
+**Tech Stack**: Spring Boot 3.5.7 + React 19 + PostgreSQL 15
+
+**Core Domain**:
+- Item, GameMap, Area, LootType, MapMarker
+- Relationships: Area ↔ LootType (Many-to-Many)
+
+**Key Algorithms**:
+- Map Recommendation (JPQL joins)
+- Route Optimization (nearest-neighbor + 2-opt)
+- Routing Profiles (PURE_SCAVENGER, EASY_EXFIL, AVOID_PVP, SAFE_EXFIL)
+
+**File Structure**:
+- Backend: `src/main/java/com/pauloneill/arcraidersplanner/`
+- Frontend: `frontend/src/`
+- Migrations: `src/main/resources/db/migration/`
+
+---
+
+## Current Repository State
+
+**Recent files**:
+!{ls -lt src/main/java/com/pauloneill/arcraidersplanner/**/*.java 2>/dev/null | head -10}
+
+**Git status**:
+!{git status --short 2>/dev/null}
+
+---
+
+**IMPORTANT**: This is a PLANNING phase only. Do NOT implement any code. Present this plan and await user approval before proceeding to implementation.
+
+**End with**: "AWAITING YOUR APPROVAL TO PROCEED TO IMPLEMENTATION"
+"""

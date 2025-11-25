@@ -1,0 +1,94 @@
+# Component code review focusing on React 19 + TypeScript best practices
+
+description = "Reviews a React component for code quality, patterns, and best practices."
+
+prompt = """
+**TASK: Perform a comprehensive React component code review.**
+
+You are an expert React and TypeScript developer. Please review the provided component code and provide detailed feedback on code quality, patterns, and adherence to modern React 19 best practices.
+
+**COMPONENT CODE:**
+
+@{{component_file}}
+
+**PROJECT CONTEXT:**
+
+This is a React 19 + TypeScript application using:
+- Material UI v7 for components
+- TanStack Router for routing
+- TanStack Query (useSuspenseQuery) for data fetching
+- Strict TypeScript configuration
+- Modern React patterns (Suspense, lazy loading)
+
+**REVIEW CRITERIA:**
+
+1. **React Patterns:**
+   - Proper use of hooks (useState, useEffect, useMemo, useCallback)
+   - Suspense boundaries for async operations
+   - Error boundaries where appropriate
+   - Component composition and reusability
+   - Avoiding prop drilling (consider Context when needed)
+
+2. **TypeScript:**
+   - Type safety (no 'any' types without justification)
+   - Proper interface/type definitions for props
+   - Generic constraints where applicable
+   - Type inference vs explicit typing
+
+3. **Performance:**
+   - Unnecessary re-renders (missing memoization)
+   - Heavy computations that should be memoized
+   - Large component trees that could benefit from code splitting
+   - Proper dependency arrays in useEffect/useMemo/useCallback
+
+4. **Material UI v7:**
+   - Proper use of theming and sx prop
+   - Responsive design with breakpoint helpers
+   - Accessibility features from MUI components
+   - Consistent elevation and spacing
+
+5. **Code Quality:**
+   - Clear naming conventions
+   - Single Responsibility Principle
+   - DRY (Don't Repeat Yourself)
+   - Appropriate comments for complex logic
+   - Error handling and edge cases
+
+6. **State Management:**
+   - Local state vs global state decisions
+   - State colocation (keep state close to where it's used)
+   - Derived state vs stored state
+   - Async state handling with TanStack Query
+
+7. **Accessibility:**
+   - Semantic HTML elements
+   - ARIA labels where needed
+   - Keyboard navigation support
+   - Focus management
+
+**OUTPUT FORMAT:**
+
+Provide your review in the following structure:
+
+## Summary
+Brief overview of the component and overall assessment.
+
+## Critical Issues 🔴
+Issues that must be fixed (bugs, security, major performance problems).
+
+## Improvements 🟡
+Suggestions for better patterns, readability, or maintainability.
+
+## Best Practices ✅
+What the component does well.
+
+## Code Examples
+Show specific code improvements with before/after examples where helpful.
+
+Be constructive and specific in your feedback. Include code snippets to illustrate your points.
+"""
+
+[[args]]
+name = "component_file"
+description = "The path to the React component file to review."
+required = true
