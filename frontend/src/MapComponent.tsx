@@ -318,31 +318,27 @@ const MapComponent: React.FC<MapProps> = ({
                 {/* Render enemy spawn markers */}
                 {enemySpawns.map(
                     (spawn) => (
-                        (spawnCoords[0] = spawn.lat),
-                        (spawnCoords[1] = spawn.lng),
-                        (
-                            <Marker
-                                key={spawn.id}
-                                position={[spawn.lat, spawn.lng]}
-                                icon={createEnemyIcon(spawn.onRoute)}
-                            >
-                                <Popup>
-                                    <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong>
-                                    <br />
-                                    <strong>{spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}</strong>
-                                    <br />
-                                    {spawn.distanceToRoute !== null && spawn.distanceToRoute !== undefined && (
-                                        <>
-                                            Distance to route: {Math.round(spawn.distanceToRoute)} units
-                                            <br />
-                                        </>
-                                    )}
-                                    {spawn.onRoute && (
-                                        <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>✓ Near your route</span>
-                                    )}
-                                </Popup>
-                            </Marker>
-                        )
+                        <Marker
+                            key={spawn.id}
+                            position={[spawn.lat, spawn.lng]}
+                            icon={createEnemyIcon(spawn.onRoute)}
+                        >
+                            <Popup>
+                                <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong>
+                                <br />
+                                <strong>{spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}</strong>
+                                <br />
+                                {spawn.distanceToRoute !== null && spawn.distanceToRoute !== undefined && (
+                                    <>
+                                        Distance to route: {Math.round(spawn.distanceToRoute)} units
+                                        <br />
+                                    </>
+                                )}
+                                {spawn.onRoute && (
+                                    <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>✓ Near your route</span>
+                                )}
+                            </Popup>
+                        </Marker>
                     )
                 )}
             </MapContainer>
