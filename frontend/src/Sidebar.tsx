@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import ItemIndex from "./ItemIndex";
 import EnemyIndex from "./EnemyIndex";
+import RecipeIndex from "./RecipeIndex";
 import { RoutingProfile } from "./types";
-import type { Item, EnemyType } from "./types";
+import type { Item, EnemyType, Recipe } from "./types";
 
 interface SidebarProps {
   onAddToLoadout: (item: Item) => void;
@@ -21,6 +22,11 @@ interface SidebarProps {
   setRoutingProfile: (mode: RoutingProfile) => void;
   hasRaiderKey: boolean;
   setHasRaiderKey: (hasKey: boolean) => void;
+
+  // Recipe Support
+  recipes: Recipe[];
+  recipeSelection: Record<number, "PRIORITY" | "ONGOING" | undefined>;
+  onToggleRecipe: (recipeId: number) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -36,8 +42,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   setRoutingProfile,
   hasRaiderKey,
   setHasRaiderKey,
+  recipes,
+  recipeSelection,
+  onToggleRecipe,
 }) => {
-  const [targetType, setTargetType] = useState<"items" | "enemies">("items");
+  const [targetType, setTargetType] = useState<"items" | "enemies" | "recipes">("items");
   return (
     <aside className="flex flex-col h-full border-r-2 border-retro-sand/20 bg-retro-dark/90 relative overflow-hidden">
       {/* CRT Overlay for Sidebar */}
@@ -82,16 +91,32 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               ARC Enemies
             </button>
+            <button
+              onClick={() => setTargetType("recipes")}
+              className={`flex-1 py-2 px-3 text-xs font-mono uppercase tracking-wider transition-all ${
+                targetType === "recipes"
+                  ? "bg-retro-blue text-retro-black border border-retro-blue"
+                  : "bg-retro-black/50 text-retro-sand-dim border border-retro-sand/20 hover:border-retro-blue/50"
+              }`}
+            >
+              Recipes
+            </button>
           </div>
 
           {/* Conditional Rendering */}
           <div className="opacity-90 transform scale-95 origin-top-left w-[105%]">
             {targetType === "items" ? (
               <ItemIndex onItemSelected={onAddToLoadout} />
-            ) : (
+            ) : targetType === "enemies" ? (
               <EnemyIndex
                 onEnemyTypeSelected={onAddEnemyType}
                 selectedEnemyTypes={selectedEnemyTypes}
+              />
+            ) : (
+              <RecipeIndex 
+                recipes={recipes}
+                selectionState={recipeSelection}
+                onToggleRecipe={onToggleRecipe}
               />
             )}
           </div>
@@ -104,12 +129,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         <h3 className="text-sm text-retro-sand font-bold mb-3 uppercase tracking-wider flex justify-between items-center">
           <span>{">"} Targets</span>
           <span className="text-retro-orange">
-            {loadout.length + selectedEnemyTypes.length}/10
+            {loadout.length + selectedEnemyTypes.length + Object.values(recipeSelection).filter(v => v !== undefined).length}/10
           </span>
         </h3>
 
         <div className="space-y-2 mb-4 max-h-32 overflow-y-auto custom-scrollbar">
-          {loadout.length === 0 && selectedEnemyTypes.length === 0 && (
+          {loadout.length === 0 && selectedEnemyTypes.length === 0 && Object.values(recipeSelection).filter(v => v !== undefined).length === 0 && (
             <div className="text-xs text-retro-sand-dim italic text-center py-4 border border-dashed border-retro-sand-dim/30">
               NO OBJECTIVES SELECTED
             </div>

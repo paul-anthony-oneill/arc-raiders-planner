@@ -66,7 +66,11 @@ const createEnemyIcon = (onRoute: boolean) => {
 }
 
 // Create numbered DivIcon for route sequence
-const createNumberedIcon = (number: number, isDanger: boolean = false) => {
+const createNumberedIcon = (number: number, isDanger: boolean = false, hasOngoing: boolean = false) => {
+    const borderColor = hasOngoing ? '#2196F3' : 'white'; // Blue border for ongoing
+    const borderWidth = hasOngoing ? '4px' : '3px';
+    const size = hasOngoing ? 36 : 32;
+    
     return L.divIcon({
         className: 'numbered-marker',
         html: `<div style="
@@ -74,17 +78,19 @@ const createNumberedIcon = (number: number, isDanger: boolean = false) => {
             color: white;
             font-weight: bold;
             font-size: 16px;
-            width: 32px;
-            height: 32px;
+            width: ${size}px;
+            height: ${size}px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 3px solid white;
+            border: ${borderWidth} solid ${borderColor};
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        ">${number}</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        ">${number}
+        ${hasOngoing ? '<span style="position:absolute; top:-5px; right:-5px; background:#2196F3; border-radius:50%; width:12px; height:12px; border:2px solid white;"></span>' : ''}
+        </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2],
     })
 }
 
@@ -141,6 +147,12 @@ const MapComponent: React.FC<MapProps> = ({
     // Get route index for an area
     const getRouteIndex = (areaId: number) => {
         return routePath.findIndex((a) => a.id === areaId)
+    }
+    
+    // Get ongoing matches for an area
+    const getOngoingMatches = (areaId: number) => {
+        const area = routePath.find(a => a.id === areaId);
+        return area?.ongoingMatchItems || [];
     }
 
     return (
@@ -228,6 +240,8 @@ const MapComponent: React.FC<MapProps> = ({
                     const inRoute = isInRoute(area.id)
                     const routeIndex = getRouteIndex(area.id)
                     const isDanger = area.lootAbundance === 1
+                    const ongoingMatches = inRoute ? getOngoingMatches(area.id) : []
+                    const hasOngoing = ongoingMatches.length > 0
 
                     // Skip rendering polygon if it's a danger zone (already rendered)
                     if (isDanger && showDangerZones) {
@@ -241,8 +255,8 @@ const MapComponent: React.FC<MapProps> = ({
                                 <Polygon
                                     positions={polygonPositions}
                                     pathOptions={{
-                                        color: inRoute ? '#4CAF50' : '#cccccc',
-                                        fillColor: inRoute ? '#4CAF50' : '#cccccc',
+                                        color: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
+                                        fillColor: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
                                         fillOpacity: inRoute ? 0.4 : 0.1,
                                         weight: inRoute ? 3 : 1,
                                     }}
@@ -259,7 +273,16 @@ const MapComponent: React.FC<MapProps> = ({
                                         {inRoute && (
                                             <>
                                                 <strong>Route Position: #{routeIndex + 1}</strong>
+                                                <br/>
                                             </>
+                                        )}
+                                        {hasOngoing && (
+                                            <div style={{marginTop: '4px', color: '#2196F3'}}>
+                                                <strong>Bonus Loot:</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                    {ongoingMatches.map(item => <li key={item}>{item}</li>)}
+                                                </ul>
+                                            </div>
                                         )}
                                     </Popup>
                                 </Polygon>
@@ -269,7 +292,7 @@ const MapComponent: React.FC<MapProps> = ({
                             {inRoute ? (
                                 <Marker
                                     position={coordsToLatLng(area.mapX || 0, area.mapY || 0)}
-                                    icon={createNumberedIcon(routeIndex + 1, isDanger)}
+                                    icon={createNumberedIcon(routeIndex + 1, isDanger, hasOngoing)}
                                 >
                                     <Popup>
                                         <strong>
@@ -278,6 +301,14 @@ const MapComponent: React.FC<MapProps> = ({
                                         <br />
                                         {area.lootTypes && area.lootTypes.length > 0 && (
                                             <>Types: {area.lootTypes.join(', ')}</>
+                                        )}
+                                        {hasOngoing && (
+                                            <div style={{marginTop: '8px', borderTop: '1px solid #ccc', paddingTop: '4px'}}>
+                                                <strong style={{color: '#2196F3'}}>Bonus Loot (Ongoing):</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px', color: '#2196F3'}}>
+                                                    {ongoingMatches.map(item => <li key={item}>{item}</li>)}
+                                                </ul>
+                                            </div>
                                         )}
                                     </Popup>
                                 </Marker>
