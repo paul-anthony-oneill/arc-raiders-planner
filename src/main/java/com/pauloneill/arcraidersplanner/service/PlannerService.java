@@ -97,11 +97,14 @@ public class PlannerService {
             RouteResult route = calculateRouteAndScore(relevantAreas, requiredLootTypes, request.routingProfile(),
                     dangerZones, extractionMarkers, enemySpawnsOnMap, map);
 
+            // Resolve Ongoing Items Map: LootType Name -> List of Item Names
+            Map<String, List<String>> ongoingLootMap = resolveOngoingItems(request.ongoingItemNames());
+
             PlannerResponseDto response = new PlannerResponseDto(
                     map.getId(),
                     map.getName(),
                     route.score,
-                    route.path.stream().map(this::convertToAreaDto).toList(),
+                    route.path.stream().map(area -> convertToAreaDto(area, ongoingLootMap)).toList(),
                     route.extractionPoint,
                     route.extractionLat,
                     route.extractionLng,
@@ -575,7 +578,7 @@ public class PlannerService {
                 .toList();
     }
 
-    private AreaDto convertToAreaDto(Area area) {
+    private AreaDto convertToAreaDto(Area area, Map<String, List<String>> ongoingLootMap) {
         AreaDto dto = new AreaDto();
         dto.setId(area.getId());
         dto.setName(area.getName());
@@ -583,10 +586,46 @@ public class PlannerService {
         dto.setMapY(area.getMapY());
         dto.setCoordinates(area.getCoordinates());
         dto.setLootAbundance(area.getLootAbundance());
+        
+        Set<String> areaLootTypes = new HashSet<>();
         if (area.getLootTypes() != null) {
-            dto.setLootTypes(area.getLootTypes().stream().map(LootType::getName).collect(Collectors.toSet()));
+            areaLootTypes = area.getLootTypes().stream().map(LootType::getName).collect(Collectors.toSet());
+            dto.setLootTypes(areaLootTypes);
+        } else {
+            dto.setLootTypes(Collections.emptySet());
         }
+
+        // Populate ongoingMatchItems
+        if (ongoingLootMap != null && !ongoingLootMap.isEmpty()) {
+            List<String> matches = new ArrayList<>();
+            for (String lootType : areaLootTypes) {
+                if (ongoingLootMap.containsKey(lootType)) {
+                    matches.addAll(ongoingLootMap.get(lootType));
+                }
+            }
+            // Deduplicate in case multiple loot types map to same item (unlikely but safe)
+            dto.setOngoingMatchItems(matches.stream().distinct().sorted().toList());
+        } else {
+            dto.setOngoingMatchItems(Collections.emptyList());
+        }
+
         return dto;
+    }
+
+    private Map<String, List<String>> resolveOngoingItems(List<String> itemNames) {
+        if (itemNames == null || itemNames.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, List<String>> map = new HashMap<>();
+        for (String name : itemNames) {
+            itemRepository.findByName(name)
+                    .ifPresent(item -> {
+                        if (item.getLootType() != null) {
+                            map.computeIfAbsent(item.getLootType().getName(), k -> new ArrayList<>()).add(name);
+                        }
+                    });
+        }
+        return map;
     }
 
 }

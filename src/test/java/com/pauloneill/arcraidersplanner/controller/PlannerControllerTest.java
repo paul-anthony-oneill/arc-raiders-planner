@@ -47,7 +47,8 @@ class PlannerControllerTest {
                 List.of("Copper Wire"),
                 null,
                 false,
-                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         PlannerResponseDto mockResponse = new PlannerResponseDto(
@@ -56,7 +57,9 @@ class PlannerControllerTest {
                 200.0,
                 Collections.emptyList(),
                 null,
-                Collections.emptyList()
+                null, // extractionLat
+                null, // extractionLng
+                Collections.emptyList() // nearbyEnemySpawns
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -80,7 +83,8 @@ class PlannerControllerTest {
                 List.of("Copper Wire"),
                 null,
                 true,
-                PlannerRequestDto.RoutingProfile.EASY_EXFIL
+                PlannerRequestDto.RoutingProfile.EASY_EXFIL,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         PlannerResponseDto mockResponse = new PlannerResponseDto(
@@ -89,7 +93,9 @@ class PlannerControllerTest {
                 150.0,
                 Collections.emptyList(),
                 "Raider Hatch Alpha",
-                Collections.emptyList()
+                10.0, // extractionLat
+                20.0, // extractionLng
+                Collections.emptyList() // nearbyEnemySpawns
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -112,7 +118,8 @@ class PlannerControllerTest {
                 List.of("Industrial Parts"),
                 null,
                 false,
-                PlannerRequestDto.RoutingProfile.AVOID_PVP
+                PlannerRequestDto.RoutingProfile.AVOID_PVP,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         PlannerResponseDto mockResponse = new PlannerResponseDto(
@@ -121,7 +128,9 @@ class PlannerControllerTest {
                 180.0,
                 Collections.emptyList(),
                 null,
-                Collections.emptyList()
+                null, // extractionLat
+                null, // extractionLng
+                Collections.emptyList() // nearbyEnemySpawns
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -144,7 +153,8 @@ class PlannerControllerTest {
                 List.of("Mechanical Components"),
                 null,
                 true,
-                PlannerRequestDto.RoutingProfile.SAFE_EXFIL
+                PlannerRequestDto.RoutingProfile.SAFE_EXFIL,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         PlannerResponseDto mockResponse = new PlannerResponseDto(
@@ -153,7 +163,9 @@ class PlannerControllerTest {
                 170.0,
                 Collections.emptyList(),
                 "Safe Hatch Beta",
-                Collections.emptyList()
+                30.0, // extractionLat
+                40.0, // extractionLng
+                Collections.emptyList() // nearbyEnemySpawns
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -176,7 +188,8 @@ class PlannerControllerTest {
                 List.of("Nonexistent Item"),
                 null,
                 false,
-                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
@@ -199,12 +212,13 @@ class PlannerControllerTest {
                 List.of("Copper Wire"),
                 null,
                 false,
-                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
-        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null, Collections.emptyList());
-        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null, Collections.emptyList());
-        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null, Collections.emptyList());
+        PlannerResponseDto map1 = new PlannerResponseDto(1L, "The Spaceport", 300.0, Collections.emptyList(), null, null, null, Collections.emptyList());
+        PlannerResponseDto map2 = new PlannerResponseDto(2L, "Buried City", 200.0, Collections.emptyList(), null, null, null, Collections.emptyList());
+        PlannerResponseDto map3 = new PlannerResponseDto(3L, "Blue Gate", 100.0, Collections.emptyList(), null, null, null, Collections.emptyList());
 
         when(plannerService.generateRoute(any(PlannerRequestDto.class)))
                 .thenReturn(List.of(map1, map2, map3));

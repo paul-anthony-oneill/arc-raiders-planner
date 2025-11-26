@@ -71,7 +71,8 @@ class PlannerServiceTest {
         when(gameMapRepository.findAllWithAreas()).thenReturn(List.of(mapA, mapB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, false, PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+                List.of("Copper Wire"), null, false, PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         // Act
@@ -114,7 +115,8 @@ class PlannerServiceTest {
         when(gameMapRepository.findAllWithAreas()).thenReturn(List.of(mapA, mapB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, false, PlannerRequestDto.RoutingProfile.AVOID_PVP
+                List.of("Copper Wire"), null, false, PlannerRequestDto.RoutingProfile.AVOID_PVP,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         // Act
@@ -165,7 +167,8 @@ class PlannerServiceTest {
         when(mapMarkerRepository.findByGameMapId(2L)).thenReturn(List.of(hatchB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, true, PlannerRequestDto.RoutingProfile.EASY_EXFIL
+                List.of("Copper Wire"), null, true, PlannerRequestDto.RoutingProfile.EASY_EXFIL,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         // Act
@@ -224,7 +227,8 @@ class PlannerServiceTest {
         when(mapMarkerRepository.findByGameMapId(2L)).thenReturn(List.of(hatchB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, true, PlannerRequestDto.RoutingProfile.SAFE_EXFIL
+                List.of("Copper Wire"), null, true, PlannerRequestDto.RoutingProfile.SAFE_EXFIL,
+                Collections.emptyList() // Added ongoingItemNames
         );
 
         // Act
