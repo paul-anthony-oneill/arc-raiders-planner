@@ -44,6 +44,7 @@ export interface Area {
   coordinates?: string;
   lootTypes: string[];
   lootAbundance?: number;
+  ongoingMatchItems?: string[];
 }
 
 export const RoutingProfile = {
@@ -61,6 +62,29 @@ export interface PlannerRequest {
   targetEnemyTypes: string[]; // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
   hasRaiderKey: boolean;
   routingProfile: RoutingProfile;
+  ongoingItemNames?: string[];
+}
+
+export const RecipeType = {
+  CRAFTING: "CRAFTING",
+  WORKBENCH_UPGRADE: "WORKBENCH_UPGRADE",
+} as const;
+
+export type RecipeType = (typeof RecipeType)[keyof typeof RecipeType];
+
+
+export interface RecipeIngredient {
+  itemId: number;
+  itemName: string;
+  quantity: number;
+}
+
+export interface Recipe {
+  id?: number;
+  name: string;
+  description: string;
+  type: RecipeType;
+  ingredients: RecipeIngredient[];
 }
 
 export interface PlannerResponse {
