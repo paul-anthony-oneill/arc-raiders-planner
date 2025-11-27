@@ -36,7 +36,9 @@ public class PlannerService {
     }
 
     public List<PlannerResponseDto> generateRoute(PlannerRequestDto request) {
-        Set<String> requiredLootTypes = resolveLootTypes(request.targetItemNames());
+        // Map LootType Name -> List of Target Item Names
+        Map<String, List<String>> targetLootMap = resolveOngoingItems(request.targetItemNames());
+        Set<String> requiredLootTypes = targetLootMap.keySet();
 
         // Get all spawns of target enemy types if specified
         List<MapMarker> allEnemySpawns = Collections.emptyList();
@@ -104,7 +106,7 @@ public class PlannerService {
                     map.getId(),
                     map.getName(),
                     route.score,
-                    route.path.stream().map(area -> convertToAreaDto(area, ongoingLootMap)).toList(),
+                    route.path.stream().map(area -> convertToAreaDto(area, ongoingLootMap, targetLootMap)).toList(),
                     route.extractionPoint,
                     route.extractionLat,
                     route.extractionLng,
@@ -394,16 +396,6 @@ public class PlannerService {
 
     // --- HELPERS ---
 
-    private Set<String> resolveLootTypes(List<String> itemNames) {
-        Set<String> types = new HashSet<>();
-        for (String name : itemNames) {
-            itemRepository.findByName(name)
-                    .map(Item::getLootType).map(LootType::getName)
-                    .ifPresent(types::add);
-        }
-        return types;
-    }
-
     private double distance(Area a, Area b) {
         return Math.sqrt(Math.pow(a.getMapX() - b.getMapX(), 2) + Math.pow(a.getMapY() - b.getMapY(), 2));
     }
@@ -578,7 +570,7 @@ public class PlannerService {
                 .toList();
     }
 
-    private AreaDto convertToAreaDto(Area area, Map<String, List<String>> ongoingLootMap) {
+    private AreaDto convertToAreaDto(Area area, Map<String, List<String>> ongoingLootMap, Map<String, List<String>> targetLootMap) {
         AreaDto dto = new AreaDto();
         dto.setId(area.getId());
         dto.setName(area.getName());
@@ -603,10 +595,22 @@ public class PlannerService {
                     matches.addAll(ongoingLootMap.get(lootType));
                 }
             }
-            // Deduplicate in case multiple loot types map to same item (unlikely but safe)
             dto.setOngoingMatchItems(matches.stream().distinct().sorted().toList());
         } else {
             dto.setOngoingMatchItems(Collections.emptyList());
+        }
+
+        // Populate targetMatchItems
+        if (targetLootMap != null && !targetLootMap.isEmpty()) {
+            List<String> matches = new ArrayList<>();
+            for (String lootType : areaLootTypes) {
+                if (targetLootMap.containsKey(lootType)) {
+                    matches.addAll(targetLootMap.get(lootType));
+                }
+            }
+            dto.setTargetMatchItems(matches.stream().distinct().sorted().toList());
+        } else {
+            dto.setTargetMatchItems(Collections.emptyList());
         }
 
         return dto;

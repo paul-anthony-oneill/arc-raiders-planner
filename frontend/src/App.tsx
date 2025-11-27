@@ -32,10 +32,25 @@ function App() {
     // Recipe State
     const [recipes, setRecipes] = useState<Recipe[]>([])
     const [recipeSelection, setRecipeSelection] = useState<Record<number, "PRIORITY" | "ONGOING" | undefined>>({})
+    const [collectedIngredients, setCollectedIngredients] = useState<Record<number, Record<string, number>>>({})
+    const [itemContextMap, setItemContextMap] = useState<Record<string, string[]>>({})
 
     useEffect(() => {
         recipeApi.getAllRecipes().then(setRecipes).catch(console.error)
+        // Load from localStorage
+        const savedSelection = localStorage.getItem('recipeSelection');
+        if (savedSelection) setRecipeSelection(JSON.parse(savedSelection));
+        const savedCollected = localStorage.getItem('collectedIngredients');
+        if (savedCollected) setCollectedIngredients(JSON.parse(savedCollected));
     }, [])
+
+    useEffect(() => {
+        localStorage.setItem('recipeSelection', JSON.stringify(recipeSelection));
+    }, [recipeSelection])
+
+    useEffect(() => {
+        localStorage.setItem('collectedIngredients', JSON.stringify(collectedIngredients));
+    }, [collectedIngredients])
 
     // Handlers
     const handleToggleRecipe = (recipeId: number) => {
@@ -43,6 +58,21 @@ function App() {
             const current = prev[recipeId];
             const next = current === undefined ? "PRIORITY" : current === "PRIORITY" ? "ONGOING" : undefined;
             return { ...prev, [recipeId]: next };
+        });
+    }
+
+    const handleIngredientUpdate = (recipeId: number, ingredientName: string, delta: number) => {
+        setCollectedIngredients(prev => {
+            const recipeCollected = prev[recipeId] || {};
+            const currentCount = recipeCollected[ingredientName] || 0;
+            const newCount = Math.max(0, currentCount + delta);
+            return {
+                ...prev,
+                [recipeId]: {
+                    ...recipeCollected,
+                    [ingredientName]: newCount
+                }
+            };
         });
     }
 
@@ -84,23 +114,40 @@ function App() {
         setStats(null)
 
         try {
-            // Resolve Recipe Ingredients
+            // Resolve Recipe Ingredients & Context
             const targetIngredients: string[] = [];
             const ongoingIngredients: string[] = [];
+            const contextMap: Record<string, string[]> = {};
 
             Object.entries(recipeSelection).forEach(([idStr, status]) => {
                 if (!status) return;
-                const recipe = recipes.find(r => r.id === Number(idStr));
+                const recipeId = Number(idStr);
+                const recipe = recipes.find(r => r.id === recipeId);
                 if (recipe) {
+                    const collected = collectedIngredients[recipeId] || {};
+                    
                     recipe.ingredients.forEach(ing => {
-                        if (status === "PRIORITY") {
-                            targetIngredients.push(ing.itemName);
-                        } else if (status === "ONGOING") {
-                            ongoingIngredients.push(ing.itemName);
+                        const collectedCount = collected[ing.itemName] || 0;
+                        if (collectedCount < ing.quantity) {
+                            // Item is still needed
+                            if (status === "PRIORITY") {
+                                targetIngredients.push(ing.itemName);
+                            } else if (status === "ONGOING") {
+                                ongoingIngredients.push(ing.itemName);
+                            }
+                            
+                            // Add to context map
+                            if (!contextMap[ing.itemName]) contextMap[ing.itemName] = [];
+                            const label = `${recipe.name} (${status === 'PRIORITY' ? 'Priority' : 'Ongoing'})`;
+                            if (!contextMap[ing.itemName].includes(label)) {
+                                contextMap[ing.itemName].push(label);
+                            }
                         }
                     });
                 }
             });
+            
+            setItemContextMap(contextMap);
 
             // Construct the Request Object using STATE values
             const requestBody: PlannerRequest = {
@@ -193,6 +240,8 @@ function App() {
                     recipes={recipes}
                     recipeSelection={recipeSelection}
                     onToggleRecipe={handleToggleRecipe}
+                    collectedIngredients={collectedIngredients}
+                    onIngredientUpdate={handleIngredientUpdate}
                 />
             </div>
 
@@ -240,6 +289,7 @@ function App() {
                                 routingProfile={routingProfile}
                                 showRoutePath={true}
                                 enemySpawns={activeRoute?.nearbyEnemySpawns || []}
+                                itemContextMap={itemContextMap}
                             />
                         </div>
                     ) : (

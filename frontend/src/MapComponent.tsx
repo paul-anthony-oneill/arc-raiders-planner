@@ -14,6 +14,7 @@ interface MapProps {
     routingProfile?: RoutingProfile
     showRoutePath?: boolean
     enemySpawns?: EnemySpawn[]
+    itemContextMap?: Record<string, string[]> // New prop
 }
 
 // Custom icon setup
@@ -104,6 +105,7 @@ const MapComponent: React.FC<MapProps> = ({
     routingProfile,
     showRoutePath = true,
     enemySpawns = [],
+    itemContextMap = {},
 }) => {
     const bounds: L.LatLngBoundsLiteral = [
         [-1000, -1000],
@@ -153,6 +155,20 @@ const MapComponent: React.FC<MapProps> = ({
     const getOngoingMatches = (areaId: number) => {
         const area = routePath.find(a => a.id === areaId);
         return area?.ongoingMatchItems || [];
+    }
+
+    // Get target matches for an area
+    const getTargetMatches = (areaId: number) => {
+        const area = routePath.find(a => a.id === areaId);
+        return area?.targetMatchItems || [];
+    }
+
+    const formatItemWithContext = (itemName: string) => {
+        const context = itemContextMap[itemName];
+        if (!context || context.length === 0) return itemName;
+        // Filter context based on isTarget (Priority vs Ongoing) if needed, but currently contextMap has all.
+        // We can just show all contexts.
+        return `${itemName} [${context.join(', ')}]`;
     }
 
     return (
@@ -241,7 +257,9 @@ const MapComponent: React.FC<MapProps> = ({
                     const routeIndex = getRouteIndex(area.id)
                     const isDanger = area.lootAbundance === 1
                     const ongoingMatches = inRoute ? getOngoingMatches(area.id) : []
+                    const targetMatches = inRoute ? getTargetMatches(area.id) : []
                     const hasOngoing = ongoingMatches.length > 0
+                    const hasTarget = targetMatches.length > 0
 
                     // Skip rendering polygon if it's a danger zone (already rendered)
                     if (isDanger && showDangerZones) {
@@ -264,6 +282,16 @@ const MapComponent: React.FC<MapProps> = ({
                                     <Popup>
                                         <strong>{area.name}</strong>
                                         <br />
+                                        {hasTarget && (
+                                            <div style={{marginBottom: '4px', color: '#d32f2f'}}>
+                                                <strong>🎯 Target Loot:</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                    {targetMatches.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                         {area.lootTypes && area.lootTypes.length > 0 && (
                                             <>
                                                 Types: {area.lootTypes.join(', ')}
@@ -280,7 +308,9 @@ const MapComponent: React.FC<MapProps> = ({
                                             <div style={{marginTop: '4px', color: '#2196F3'}}>
                                                 <strong>Bonus Loot:</strong>
                                                 <ul style={{margin: '0', paddingLeft: '16px'}}>
-                                                    {ongoingMatches.map(item => <li key={item}>{item}</li>)}
+                                                    {ongoingMatches.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
                                                 </ul>
                                             </div>
                                         )}
@@ -299,6 +329,16 @@ const MapComponent: React.FC<MapProps> = ({
                                             Stop #{routeIndex + 1}: {area.name}
                                         </strong>
                                         <br />
+                                        {hasTarget && (
+                                            <div style={{marginBottom: '8px', borderBottom: '1px solid #ccc', paddingBottom: '4px'}}>
+                                                <strong style={{color: '#d32f2f'}}>🎯 Target Loot:</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px', color: '#d32f2f'}}>
+                                                    {targetMatches.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                         {area.lootTypes && area.lootTypes.length > 0 && (
                                             <>Types: {area.lootTypes.join(', ')}</>
                                         )}
@@ -306,7 +346,9 @@ const MapComponent: React.FC<MapProps> = ({
                                             <div style={{marginTop: '8px', borderTop: '1px solid #ccc', paddingTop: '4px'}}>
                                                 <strong style={{color: '#2196F3'}}>Bonus Loot (Ongoing):</strong>
                                                 <ul style={{margin: '0', paddingLeft: '16px', color: '#2196F3'}}>
-                                                    {ongoingMatches.map(item => <li key={item}>{item}</li>)}
+                                                    {ongoingMatches.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
                                                 </ul>
                                             </div>
                                         )}

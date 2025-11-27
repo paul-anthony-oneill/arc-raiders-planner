@@ -45,6 +45,7 @@ export interface Area {
   lootTypes: string[];
   lootAbundance?: number;
   ongoingMatchItems?: string[];
+  targetMatchItems?: string[];
 }
 
 export const RoutingProfile = {
