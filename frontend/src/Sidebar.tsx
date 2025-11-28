@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import ItemIndex from "./ItemIndex";
 import EnemyIndex from "./EnemyIndex";
 import RecipeIndex from "./RecipeIndex";
@@ -104,7 +104,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [targetType, setTargetType] = useState<"items" | "enemies" | "recipes">("items");
 
   // Filter active recipes
-  const activeRecipes = recipes.filter(r => recipeSelection[r.id!] !== undefined);
+  const activeRecipes = useMemo(() =>
+    recipes.filter(r => recipeSelection[r.id!] !== undefined),
+    [recipes, recipeSelection]
+  );
 
   return (
     <aside className="flex flex-col h-full border-r-2 border-retro-sand/20 bg-retro-dark/90 relative overflow-hidden">
@@ -341,4 +344,4 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);
