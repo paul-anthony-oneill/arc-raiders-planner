@@ -104,3 +104,9 @@ body.accessibility-mode {
   text-shadow: none !important;
   font-family: ui-sans-serif, system-ui, sans-serif !important;
 }
+
+/* Enemy card keyboard focus styling */
+.enemy-card:focus {
+  outline: 2px solid var(--color-retro-orange);
+  outline-offset: 2px;
+}
