@@ -86,4 +86,4 @@ const DataHUD: React.FC<DataHUDProps> = ({
   );
 };
 
-export default DataHUD;
+export default React.memo(DataHUD);
