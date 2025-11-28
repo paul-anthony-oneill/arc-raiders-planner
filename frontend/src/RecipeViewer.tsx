@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { RecipeType } from './types';
 import type { Recipe } from './types';
 import { recipeApi } from './api/recipeApi';
@@ -39,14 +39,18 @@ const RecipeViewer: React.FC<RecipeViewerProps> = ({ onExit }) => {
         setExpandedRecipes(newSet);
     };
 
-    // Filter recipes by search term
-    const filteredRecipes = recipes.filter(r =>
-        r.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter recipes by search term and group by type (memoized to prevent triple array iteration)
+    const { filteredRecipes, craftingRecipes, workbenchRecipes } = useMemo(() => {
+        const filtered = recipes.filter(r =>
+            r.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
-    // Group by type
-    const craftingRecipes = filteredRecipes.filter(r => r.type === RecipeType.CRAFTING);
-    const workbenchRecipes = filteredRecipes.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE);
+        return {
+            filteredRecipes: filtered,
+            craftingRecipes: filtered.filter(r => r.type === RecipeType.CRAFTING),
+            workbenchRecipes: filtered.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE)
+        };
+    }, [recipes, searchTerm]);
 
     const RecipeCard = ({ recipe }: { recipe: Recipe }) => {
         const isExpanded = expandedRecipes.has(recipe.id!);
