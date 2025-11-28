@@ -239,6 +239,27 @@ const MapComponent: React.FC<MapProps> = ({
                                     <Popup>
                                         <strong>{area.name}</strong>
                                         {area.lootTypes && <><br/>Types: {area.lootTypes.join(', ')}</>}
+                                        
+                                        {waypoint && waypoint.targetMatchItems && waypoint.targetMatchItems.length > 0 && (
+                                            <div style={{marginTop: '8px', color: '#d32f2f'}}>
+                                                <strong>🎯 Target Loot:</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                    {waypoint.targetMatchItems.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {waypoint && waypoint.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0 && (
+                                            <div style={{marginTop: '8px', color: '#2196F3'}}>
+                                                <strong>Bonus Loot:</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                    {waypoint.ongoingMatchItems.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                     </Popup>
                                 </Polygon>
                             )}
