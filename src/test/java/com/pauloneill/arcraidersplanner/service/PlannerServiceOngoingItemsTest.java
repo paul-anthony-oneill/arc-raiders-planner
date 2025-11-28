@@ -2,6 +2,7 @@ package com.pauloneill.arcraidersplanner.service;
 
 import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
+import com.pauloneill.arcraidersplanner.dto.WaypointDto;
 import com.pauloneill.arcraidersplanner.model.Area;
 import com.pauloneill.arcraidersplanner.model.GameMap;
 import com.pauloneill.arcraidersplanner.model.Item;
@@ -99,15 +100,15 @@ class PlannerServiceOngoingItemsTest {
         // Assert
         assertEquals(1, response.size());
         PlannerResponseDto mapResponse = response.get(0);
-        assertEquals(1, mapResponse.routePath().size());
+        assertEquals(1, mapResponse.path().size());
         
-        var areaDto = mapResponse.routePath().get(0);
-        assertEquals("Warehouse", areaDto.getName());
+        WaypointDto waypointDto = mapResponse.path().get(0);
+        assertEquals("Warehouse", waypointDto.name());
         
         // Verify Ongoing Match
-        assertTrue(areaDto.getOngoingMatchItems() != null, "ongoingMatchItems should not be null");
-        assertTrue(areaDto.getOngoingMatchItems().contains("Battery"), "Should contain 'Battery'");
-        assertEquals(1, areaDto.getOngoingMatchItems().size());
+        assertTrue(waypointDto.ongoingMatchItems() != null, "ongoingMatchItems should not be null");
+        assertTrue(waypointDto.ongoingMatchItems().contains("Battery"), "Should contain 'Battery'");
+        assertEquals(1, waypointDto.ongoingMatchItems().size());
     }
 
     private void mockItem(String name, Item item) {

@@ -3,6 +3,9 @@ package com.pauloneill.arcraidersplanner.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Data
 @Entity
 @Table(name = "items")
@@ -35,7 +38,8 @@ public class Item {
     private Double weight;
     private Integer stackSize;
 
-    // Workbench used to craft this item (e.g., "Refiner", "Assembler", "Scrappy")
-    // WHY: Enables tracking "upgrade Refiner to Level 3" as targetable objectives
-    private String workbench;
+    @ElementCollection
+    @CollectionTable(name = "item_dropped_by", joinColumns = @JoinColumn(name = "item_id"))
+    @Column(name = "enemy_id")
+    private Set<String> droppedBy = new HashSet<>();
 }

@@ -16,7 +16,7 @@ import java.util.Set;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 @Table(name = "areas")
-public class Area {
+public class Area implements RoutablePoint {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,4 +46,24 @@ public class Area {
 
     @Column(name = "loot_abundance")
     private Integer lootAbundance;
+
+    @Override
+    public String getId() {
+        return String.valueOf(this.id);
+    }
+
+    @Override
+    public double getX() {
+        return this.mapX != null ? this.mapX : 0.0;
+    }
+
+    @Override
+    public double getY() {
+        return this.mapY != null ? this.mapY : 0.0;
+    }
+
+    @Override
+    public String getName() {
+        return this.name;
+    }
 }

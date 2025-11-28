@@ -36,6 +36,18 @@ export interface MapRecommendation {
   matchingAreaCount: number; // The count used for ranking
 }
 
+export interface Waypoint {
+  id: string; // Changed to string to support both IDs and UUIDs
+  name: string;
+  x: number;
+  y: number;
+  type: "AREA" | "MARKER";
+  lootTypes?: string[];
+  lootAbundance?: number;
+  ongoingMatchItems?: string[];
+  targetMatchItems?: string[];
+}
+
 export interface Area {
   id: number;
   name: string;
@@ -92,7 +104,7 @@ export interface PlannerResponse {
   mapId: number;
   mapName: string;
   score: number;
-  routePath: Area[];
+  path: Waypoint[];
   extractionPoint?: string;
   extractionLat?: number;  // Calibrated Y coordinate of extraction point
   extractionLng?: number;  // Calibrated X coordinate of extraction point

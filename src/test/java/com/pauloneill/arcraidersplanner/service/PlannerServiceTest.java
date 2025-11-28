@@ -2,10 +2,12 @@ package com.pauloneill.arcraidersplanner.service;
 
 import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
+import com.pauloneill.arcraidersplanner.dto.WaypointDto;
 import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +32,8 @@ class PlannerServiceTest {
     private GameMapRepository gameMapRepository;
     @Mock
     private MapMarkerRepository mapMarkerRepository;
+    @Mock
+    private EnemyService enemyService;
 
     @InjectMocks
     private PlannerService plannerService;
@@ -52,6 +57,7 @@ class PlannerServiceTest {
     void testPureScavenger_CountsOnly() {
         // Arrange
         mockItem("Copper Wire", copperWire);
+        // when(enemyService.getSpawnsByTypes(anyList())).thenReturn(Collections.emptyList()); // Unnecessary
 
         // Map A: 2 Matches (Far apart)
         GameMap mapA = new GameMap();
@@ -82,6 +88,12 @@ class PlannerServiceTest {
         // Map A should win because 2 > 1. Distance penalty is ignored in PURE_SCAVENGER.
         assertEquals("Map A (Abundant)", response.getFirst().mapName());
         assertEquals(200.0, response.getFirst().score(), 0.1, "Score should be count * 100");
+        assertEquals(2, response.getFirst().path().size());
+        WaypointDto firstWaypointInPath = response.getFirst().path().get(0);
+        WaypointDto secondWaypointInPath = response.getFirst().path().get(1);
+        Set<String> waypointNames = Set.of(firstWaypointInPath.name(), secondWaypointInPath.name());
+        assertTrue(waypointNames.contains("Area 10 (Industrial)"));
+        assertTrue(waypointNames.contains("Area 11 (Industrial)"));
     }
 
     @Test
@@ -89,6 +101,7 @@ class PlannerServiceTest {
     void testAvoidPvP_PenalizesDanger() {
         // Arrange
         mockItem("Copper Wire", copperWire);
+        // when(enemyService.getSpawnsByTypes(anyList())).thenReturn(Collections.emptyList()); // Unnecessary
 
         // Map A: The "Dangerous" Map
         // Path goes from (0,0) to (200,0).
@@ -133,6 +146,7 @@ class PlannerServiceTest {
     void testEasyExfil_PrioritizesHatch() {
         // Arrange
         mockItem("Copper Wire", copperWire);
+        // when(enemyService.getSpawnsByTypes(anyList())).thenReturn(Collections.emptyList()); // Unnecessary
 
         // Map A: Loot is at (0,0). Hatch is at (10,0) -> Very Close.
         GameMap mapA = new GameMap();
@@ -185,6 +199,8 @@ class PlannerServiceTest {
     void testSafeExfil_CombinesSafetyAndProximity() {
         // Arrange
         mockItem("Copper Wire", copperWire);
+        // when(enemyService.getSpawnsByTypes(anyList())).thenReturn(Collections.emptyList()); // Unnecessary
+
 
         // Map A: "The Trap Map"
         // Loot at (0,0) and (200,0). High Tier zone at (100,0). Close hatch at (220,0).
@@ -251,6 +267,7 @@ class PlannerServiceTest {
     private Area createArea(Long id, int x, int y, int abundance, Set<LootType> lootTypes) {
         Area area = new Area();
         area.setId(id);
+        area.setName("Area " + id + " (" + lootTypes.stream().map(LootType::getName).collect(Collectors.joining(", ")) + ")");
         area.setMapX(x);
         area.setMapY(y);
         area.setLootAbundance(abundance);

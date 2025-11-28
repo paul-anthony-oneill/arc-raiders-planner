@@ -30,7 +30,10 @@ public record MetaforgeItemDto(
         List<RecipeComponent> components,
 
         @JsonProperty("recycle_components")
-        List<RecipeComponent> recycleComponents
+        List<RecipeComponent> recycleComponents,
+
+        @JsonProperty("dropped_by")
+        List<DroppedBy> droppedBy
 ) {
     // Inner record to catch the nested stats
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -57,5 +60,20 @@ public record MetaforgeItemDto(
 
             @JsonProperty("item_type")
             String itemType
+    ) {}
+
+    // DroppedBy structure from Metaforge API
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DroppedBy(
+            String id,
+            @JsonProperty("arc")
+            DroppedByArc arc
+    ) {}
+
+    // DroppedByArc structure from Metaforge API
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DroppedByArc(
+            String id,
+            String name
     ) {}
 }

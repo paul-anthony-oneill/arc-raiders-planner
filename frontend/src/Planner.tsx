@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { RoutingProfile } from "./types";
-import type { Area, Item, PlannerResponse } from "./types";
+import type { Area, Item, PlannerResponse, Waypoint } from "./types";
 import MapComponent from "./MapComponent";
 
 const API_PLANNER_URL = "/api/planner";
@@ -359,7 +359,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
                         color: "#555",
                       }}
                     >
-                      Route: {rec.routePath.length} areas
+                      Route: {rec.path.length} waypoints
                       {rec.extractionPoint && ` → Exit: ${rec.extractionPoint}`}
                     </div>
                   </li>
@@ -373,7 +373,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
             <MapComponent
               mapName={recommendations[0].mapName}
               areas={mapData.areas}
-              routePath={recommendations[0].routePath}
+              routePath={recommendations[0].path}
               extractionPoint={recommendations[0].extractionPoint}
               extractionLat={recommendations[0].extractionLat}
               extractionLng={recommendations[0].extractionLng}

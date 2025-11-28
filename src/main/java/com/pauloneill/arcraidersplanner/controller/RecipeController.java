@@ -34,6 +34,7 @@ public class RecipeController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     @Operation(summary = "Get all recipes")
     public List<RecipeDto> getAllRecipes() {
         return recipeRepository.findAll().stream()

@@ -18,9 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -143,7 +145,16 @@ public class MetaforgeSyncService {
         }
 
         // Set workbench field from API (for Phase 3 workbench upgrade targeting)
-        itemToSave.setWorkbench(dto.workbench());
+
+
+        // Extract droppedBy information
+        if (dto.droppedBy() != null && !dto.droppedBy().isEmpty()) {
+            itemToSave.setDroppedBy(dto.droppedBy().stream()
+                    .map(d -> d.arc().id())
+                    .collect(Collectors.toSet()));
+        } else {
+            itemToSave.setDroppedBy(Collections.emptySet()); // Clear existing if none from Metaforge
+        }
 
         return itemToSave;
     }
