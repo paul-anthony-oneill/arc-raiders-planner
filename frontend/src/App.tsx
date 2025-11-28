@@ -5,7 +5,8 @@ import MapComponent from './MapComponent'
 import MapEditor from './MapEditor'
 import RecipeViewer from './RecipeViewer'
 import { RoutingProfile } from './types'
-import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest, Recipe } from './types'
+import type { Item, EnemyType, PlannerResponse, PlannerRequest, Recipe } from './types'
+import type { RouteStats, MapDataResponse } from './types/stats'
 import { recipeApi } from './api/recipeApi'
 import './App.css'
 
@@ -16,12 +17,9 @@ function App() {
     const [loadout, setLoadout] = useState<Item[]>([])
     const [selectedEnemyTypes, setSelectedEnemyTypes] = useState<EnemyType[]>([])
     const [isCalculating, setIsCalculating] = useState(false)
-    const [mapData, setMapData] = useState<{
-        areas: Area[]
-        name: string
-    } | null>(null)
+    const [mapData, setMapData] = useState<MapDataResponse | null>(null)
     const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null) // Store route separately
-    const [stats, setStats] = useState<any | null>(null)
+    const [stats, setStats] = useState<RouteStats | null>(null)
     const [activeEditor, setActiveEditor] = useState<"NONE" | "MAP" | "RECIPE">("NONE")
     const [accessibilityMode, setAccessibilityMode] = useState(false)
 
@@ -182,7 +180,7 @@ function App() {
                 if (!mapResponse.ok) {
                     throw new Error(`Failed to fetch map data: ${mapResponse.status}`)
                 }
-                const mapJson: { areas: Area[]; name: string } = await mapResponse.json()
+                const mapJson: MapDataResponse = await mapResponse.json()
                 setMapData(mapJson)
 
                 // 5. Generate Stats
