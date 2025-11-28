@@ -6,7 +6,8 @@ public record PlannerRequestDto(
         List<String> targetItemNames,
         List<String> targetEnemyTypes,  // Enemy type names (e.g., "sentinel", "guardian")
         boolean hasRaiderKey,
-        RoutingProfile routingProfile
+        RoutingProfile routingProfile,
+        List<String> ongoingItemNames // New field for items tracked as "ongoing"
 ) {
     public enum RoutingProfile {
         PURE_SCAVENGER, // Rank by pure count of matching areas

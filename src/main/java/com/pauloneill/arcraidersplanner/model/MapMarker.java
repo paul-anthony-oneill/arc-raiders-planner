@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 @Entity
 @Table(name = "map_markers")
-public class MapMarker {
+public class MapMarker implements RoutablePoint {
 
     @Id
     @Column(unique = true)
@@ -26,4 +26,19 @@ public class MapMarker {
     @ManyToOne
     @JoinColumn(name = "map_id", nullable = false)
     private GameMap gameMap;
+
+    @Override
+    public double getX() {
+        return this.lng;
+    }
+
+    @Override
+    public double getY() {
+        return this.lat;
+    }
+
+    @Override
+    public String getName() {
+        return this.name;
+    }
 }

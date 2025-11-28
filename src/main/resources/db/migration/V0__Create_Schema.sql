@@ -30,7 +30,7 @@ CREATE TABLE items (
                        name VARCHAR(255) NOT NULL,
                        rarity VARCHAR(255),
                        stack_size INTEGER,
-                       value INTEGER,
+                       item_value INTEGER, -- Renamed from 'value'
                        weight DOUBLE PRECISION,
                        loot_type_id BIGINT
 );
