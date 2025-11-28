@@ -231,7 +231,7 @@ function App() {
             <div className="absolute inset-0 crt-overlay pointer-events-none z-50"></div>
 
             {/* Sidebar (Left) */}
-            <div className="w-80 flex-shrink-0 h-full z-40">
+            <aside className="w-80 flex-shrink-0 h-full z-40">
                 <Sidebar
                     loadout={loadout}
                     onAddToLoadout={handleAddToLoadout}
@@ -254,10 +254,10 @@ function App() {
                     collectedIngredients={collectedIngredients}
                     onIngredientUpdate={handleIngredientUpdate}
                 />
-            </div>
+            </aside>
 
             {/* Main Content (Right) */}
-            <div className="flex-1 flex flex-col h-full relative">
+            <main className="flex-1 flex flex-col h-full relative">
                 {/* Top Bar / Header */}
                 <header className="h-12 border-b border-retro-sand/20 bg-retro-dark flex items-center justify-between px-4 z-30">
                     <h1 className="text-retro-sand font-display text-lg tracking-widest">
@@ -314,7 +314,7 @@ function App() {
                 <div className="h-32 flex-shrink-0 z-40">
                     <DataHUD stats={stats} activeProfile={routingProfile} hoveredProfile={null} />
                 </div>
-            </div>
+            </main>
 
             {/* Toast Notifications */}
             {toasts.map(toast => (
