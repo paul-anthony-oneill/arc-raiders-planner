@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { RecipeType } from "./types";
 import type { Recipe } from "./types";
 
@@ -37,8 +37,10 @@ const RecipeIndex: React.FC<RecipeIndexProps> = ({
   };
 
   // Group by type
-  const craftingRecipes = recipes.filter(r => r.type === RecipeType.CRAFTING);
-  const upgrades = recipes.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE);
+  const { craftingRecipes, upgrades } = useMemo(() => ({
+    craftingRecipes: recipes.filter(r => r.type === RecipeType.CRAFTING),
+    upgrades: recipes.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE)
+  }), [recipes]);
 
   const renderList = (list: Recipe[], title: string) => (
     <div className="mb-4">
