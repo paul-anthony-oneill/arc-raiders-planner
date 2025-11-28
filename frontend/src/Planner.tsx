@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { RoutingProfile } from "./types";
-import type { Area, Item, PlannerResponse, Waypoint } from "./types";
+import type { Area, Item, PlannerResponse } from "./types";
 import MapComponent from "./MapComponent";
 
 const API_PLANNER_URL = "/api/planner";

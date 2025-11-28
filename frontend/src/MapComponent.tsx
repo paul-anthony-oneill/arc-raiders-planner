@@ -17,15 +17,6 @@ interface MapProps {
     itemContextMap?: Record<string, string[]>
 }
 
-// Custom icon setup
-const defaultIcon = L.icon({
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-})
-
 // Green flag icon for extraction points
 const exitIcon = L.icon({
     iconUrl:
@@ -144,7 +135,7 @@ const MapComponent: React.FC<MapProps> = ({
 
     // Helpers for checking route status
     const getWaypointForArea = (areaId: number) => {
-        return routePath.find((wp) => wp.type === 'AREA' && wp.id === areaId.toString())
+        return routePath.find((wp) => wp.type === 'AREA' && String(wp.id) === String(areaId))
     }
 
     const formatItemWithContext = (itemName: string) => {

@@ -282,7 +282,7 @@ function App() {
                             <MapComponent
                                 mapName={mapData.name}
                                 areas={mapData.areas}
-                                routePath={activeRoute?.routePath || []}
+                                routePath={activeRoute?.path || []}
                                 extractionPoint={activeRoute?.extractionPoint}
                                 extractionLat={activeRoute?.extractionLat}
                                 extractionLng={activeRoute?.extractionLng}
