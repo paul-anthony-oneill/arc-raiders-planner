@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from './Sidebar'
 import DataHUD from './DataHUD'
 import MapComponent from './MapComponent'
@@ -56,15 +56,15 @@ function App() {
     }, [collectedIngredients])
 
     // Handlers
-    const handleToggleRecipe = (recipeId: number) => {
+    const handleToggleRecipe = useCallback((recipeId: number) => {
         setRecipeSelection(prev => {
             const current = prev[recipeId];
             const next = current === undefined ? "PRIORITY" : current === "PRIORITY" ? "ONGOING" : undefined;
             return { ...prev, [recipeId]: next };
         });
-    }
+    }, []);
 
-    const handleIngredientUpdate = (recipeId: number, ingredientName: string, delta: number) => {
+    const handleIngredientUpdate = useCallback((recipeId: number, ingredientName: string, delta: number) => {
         setCollectedIngredients(prev => {
             const recipeCollected = prev[recipeId] || {};
             const currentCount = recipeCollected[ingredientName] || 0;
@@ -77,31 +77,39 @@ function App() {
                 }
             };
         });
-    }
+    }, []);
 
-    const handleAddToLoadout = (item: Item) => {
-        if (loadout.length < 5) {
-            setLoadout([...loadout, item])
-        }
-    }
+    const handleAddToLoadout = useCallback((item: Item) => {
+        setLoadout(prev => {
+            if (prev.length < 5) return [...prev, item];
+            return prev;
+        });
+    }, []);
 
-    const handleRemoveFromLoadout = (index: number) => {
-        const newLoadout = [...loadout]
-        newLoadout.splice(index, 1)
-        setLoadout(newLoadout)
-    }
+    const handleRemoveFromLoadout = useCallback((index: number) => {
+        setLoadout(prev => {
+            const updated = [...prev];
+            updated.splice(index, 1);
+            return updated;
+        });
+    }, []);
 
-    const handleAddEnemyType = (enemyType: EnemyType) => {
-        if (selectedEnemyTypes.length < 5 && !selectedEnemyTypes.includes(enemyType)) {
-            setSelectedEnemyTypes([...selectedEnemyTypes, enemyType])
-        }
-    }
+    const handleAddEnemyType = useCallback((enemyType: EnemyType) => {
+        setSelectedEnemyTypes(prev => {
+            if (prev.length < 5 && !prev.includes(enemyType)) {
+                return [...prev, enemyType];
+            }
+            return prev;
+        });
+    }, []);
 
-    const handleRemoveEnemyType = (index: number) => {
-        const newEnemyTypes = [...selectedEnemyTypes]
-        newEnemyTypes.splice(index, 1)
-        setSelectedEnemyTypes(newEnemyTypes)
-    }
+    const handleRemoveEnemyType = useCallback((index: number) => {
+        setSelectedEnemyTypes(prev => {
+            const updated = [...prev];
+            updated.splice(index, 1);
+            return updated;
+        });
+    }, []);
 
     const toggleAccessibility = () => {
         setAccessibilityMode(!accessibilityMode)
