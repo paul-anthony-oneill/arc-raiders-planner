@@ -7,11 +7,13 @@ interface ToastNotification {
     id: number;
 }
 
+let toastIdCounter = 0;
+
 export const useToast = () => {
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
     const showToast = useCallback((message: string, type: ToastType = 'info') => {
-        const id = Date.now();
+        const id = Date.now() + (toastIdCounter++);
         setToasts(prev => [...prev, { message, type, id }]);
     }, []);
 
