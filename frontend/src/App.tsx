@@ -4,6 +4,8 @@ import DataHUD from './DataHUD'
 import MapComponent from './MapComponent'
 import MapEditor from './MapEditor'
 import RecipeViewer from './RecipeViewer'
+import { Toast } from './components/Toast'
+import { useToast } from './hooks/useToast'
 import { RoutingProfile } from './types'
 import type { Item, EnemyType, PlannerResponse, PlannerRequest, Recipe } from './types'
 import type { RouteStats, MapDataResponse } from './types/stats'
@@ -13,6 +15,9 @@ import './App.css'
 const API_PLAN_URL = '/api/items/plan'
 
 function App() {
+    // Toast notifications
+    const { toasts, showToast, hideToast } = useToast();
+
     // State
     const [loadout, setLoadout] = useState<Item[]>([])
     const [selectedEnemyTypes, setSelectedEnemyTypes] = useState<EnemyType[]>([])
@@ -194,11 +199,11 @@ function App() {
                     threatLevel: bestPlan.score < 0 ? 'EXTREME' : 'MEDIUM',
                 })
             } else {
-                alert('No viable route found for this objective.')
+                showToast('No viable route found. Try adjusting your loadout or enemies.', 'error');
             }
         } catch (error) {
             console.error('Calculation failed:', error)
-            alert('Failed to calculate route. System Offline.')
+            showToast(`Failed to calculate route: ${error instanceof Error ? error.message : 'System Offline'}`, 'error');
         } finally {
             setIsCalculating(false)
         }
@@ -302,6 +307,16 @@ function App() {
                     <DataHUD stats={stats} activeProfile={routingProfile} hoveredProfile={null} />
                 </div>
             </div>
+
+            {/* Toast Notifications */}
+            {toasts.map(toast => (
+                <Toast
+                    key={toast.id}
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => hideToast(toast.id)}
+                />
+            ))}
         </div>
     )
 }
