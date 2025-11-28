@@ -21,7 +21,7 @@ public class StartupRunner implements CommandLineRunner {
     public void run(String... args) throws Exception {
         log.info("--- STARTING DATA SYNC ---");
         try {
-            syncService.syncItems();
+            syncService.syncItems(); // Syncs both items AND recipes (includeComponents=true)
             syncService.syncMarkers();
         } catch (Exception e) {
             log.error("Sync failed : ", e);

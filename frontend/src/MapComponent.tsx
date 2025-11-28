@@ -1,29 +1,21 @@
 import React from 'react'
 import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { Area, EnemySpawn, RoutingProfile } from './types'
+import type { Area, Waypoint, EnemySpawn, RoutingProfile } from './types'
 import L from 'leaflet'
 
 interface MapProps {
     mapName: string
     areas: Area[]
-    routePath?: Area[]
+    routePath?: Waypoint[]
     extractionPoint?: string
     extractionLat?: number
     extractionLng?: number
     routingProfile?: RoutingProfile
     showRoutePath?: boolean
     enemySpawns?: EnemySpawn[]
+    itemContextMap?: Record<string, string[]>
 }
-
-// Custom icon setup
-const defaultIcon = L.icon({
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-})
 
 // Green flag icon for extraction points
 const exitIcon = L.icon({
@@ -66,25 +58,32 @@ const createEnemyIcon = (onRoute: boolean) => {
 }
 
 // Create numbered DivIcon for route sequence
-const createNumberedIcon = (number: number, isDanger: boolean = false) => {
+const createNumberedIcon = (number: number, isDanger: boolean = false, hasOngoing: boolean = false, isMarker: boolean = false) => {
+    const borderColor = hasOngoing ? '#2196F3' : (isMarker ? '#ff9800' : 'white'); // Orange for marker targets
+    const borderWidth = hasOngoing || isMarker ? '4px' : '3px';
+    const size = hasOngoing || isMarker ? 36 : 32;
+    const bgColor = isMarker ? '#e65100' : (isDanger ? '#ff4444' : '#4CAF50'); // Orange/Red background for marker/danger
+    
     return L.divIcon({
         className: 'numbered-marker',
         html: `<div style="
-            background-color: ${isDanger ? '#ff4444' : '#4CAF50'};
+            background-color: ${bgColor};
             color: white;
             font-weight: bold;
             font-size: 16px;
-            width: 32px;
-            height: 32px;
+            width: ${size}px;
+            height: ${size}px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 3px solid white;
+            border: ${borderWidth} solid ${borderColor};
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        ">${number}</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        ">${number}
+        ${hasOngoing ? '<span style="position:absolute; top:-5px; right:-5px; background:#2196F3; border-radius:50%; width:12px; height:12px; border:2px solid white;"></span>' : ''}
+        </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2],
     })
 }
 
@@ -98,6 +97,7 @@ const MapComponent: React.FC<MapProps> = ({
     routingProfile,
     showRoutePath = true,
     enemySpawns = [],
+    itemContextMap = {},
 }) => {
     const bounds: L.LatLngBoundsLiteral = [
         [-1000, -1000],
@@ -124,23 +124,24 @@ const MapComponent: React.FC<MapProps> = ({
     const dangerZones = showDangerZones ? areas.filter((area) => area.lootAbundance === 1) : []
 
     // Get route path coordinates for polyline
-    const routePathCoords: L.LatLngExpression[] = routePath.map((area) => coordsToLatLng(area.mapX, area.mapY))
+    // Waypoint uses x,y. Area uses mapX, mapY. Waypoint normalizes this.
+    const routePathCoords: L.LatLngExpression[] = routePath.map((wp) => coordsToLatLng(wp.x, wp.y))
 
     // Find extraction point coordinates (if exists)
-    // Backend now provides calibrated coordinates directly
     let extractionCoords: L.LatLngTuple | null = null
     if (extractionPoint && extractionLat != null && extractionLng != null) {
         extractionCoords = [extractionLat, extractionLng] as L.LatLngTuple
     }
 
-    // Check if an area is in the route
-    const isInRoute = (areaId: number) => {
-        return routePath.some((a) => a.id === areaId)
+    // Helpers for checking route status
+    const getWaypointForArea = (areaId: number) => {
+        return routePath.find((wp) => wp.type === 'AREA' && String(wp.id) === String(areaId))
     }
 
-    // Get route index for an area
-    const getRouteIndex = (areaId: number) => {
-        return routePath.findIndex((a) => a.id === areaId)
+    const formatItemWithContext = (itemName: string) => {
+        const context = itemContextMap[itemName];
+        if (!context || context.length === 0) return itemName;
+        return `${itemName} [${context.join(', ')}]`;
     }
 
     return (
@@ -149,13 +150,13 @@ const MapComponent: React.FC<MapProps> = ({
                 height: '100%',
                 width: '100%',
                 position: 'relative',
-                backgroundColor: '#1a1a1a', // Dark background to match map edges
+                backgroundColor: '#1a1a1a',
             }}
         >
             <MapContainer
                 center={[0, 0]}
                 zoom={0}
-                minZoom={-1} // Limit zoom out (was -2, now less extreme)
+                minZoom={-1}
                 maxZoom={2}
                 crs={L.CRS.Simple}
                 bounds={bounds}
@@ -165,10 +166,9 @@ const MapComponent: React.FC<MapProps> = ({
             >
                 <ImageOverlay url={getMapImageUrl(mapName)} bounds={bounds} attribution="&copy; Embark Studios" />
 
-                {/* Render danger zones first (bottom layer) */}
+                {/* Render danger zones (bottom layer) */}
                 {dangerZones.map((area) => {
                     let polygonPositions: L.LatLngExpression[] | null = null
-
                     if (area.coordinates) {
                         try {
                             polygonPositions = JSON.parse(area.coordinates)
@@ -176,7 +176,6 @@ const MapComponent: React.FC<MapProps> = ({
                             console.error(`Failed to parse coordinates for area ${area.name}`, e)
                         }
                     }
-
                     return polygonPositions ? (
                         <Polygon
                             key={`danger-${area.id}`}
@@ -190,11 +189,7 @@ const MapComponent: React.FC<MapProps> = ({
                             }}
                         >
                             <Popup>
-                                <strong>⚠️ DANGER ZONE</strong>
-                                <br />
-                                <strong>{area.name}</strong>
-                                <br />
-                                High Traffic Area - Avoid!
+                                <strong>⚠️ DANGER ZONE</strong><br />{area.name}
                             </Popup>
                         </Polygon>
                     ) : null
@@ -213,187 +208,165 @@ const MapComponent: React.FC<MapProps> = ({
                     />
                 )}
 
-                {/* Render all areas */}
+                {/* Render Area Polygons */}
                 {areas.map((area) => {
                     let polygonPositions: L.LatLngExpression[] | null = null
-
                     if (area.coordinates) {
                         try {
                             polygonPositions = JSON.parse(area.coordinates)
-                        } catch (e) {
-                            console.error(`Failed to parse coordinates for area ${area.name}`, e)
-                        }
+                        } catch (e) { console.error(e) }
                     }
 
-                    const inRoute = isInRoute(area.id)
-                    const routeIndex = getRouteIndex(area.id)
-                    const isDanger = area.lootAbundance === 1
+                    const waypoint = getWaypointForArea(area.id)
+                    const inRoute = !!waypoint
+                    const isDanger = area.lootAbundance === 1 && showDangerZones
+                    const hasOngoing = waypoint?.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0
 
-                    // Skip rendering polygon if it's a danger zone (already rendered)
-                    if (isDanger && showDangerZones) {
-                        return null
-                    }
+                    if (isDanger) return null // Already rendered
 
                     return (
-                        <React.Fragment key={area.id}>
-                            {/* Draw the Polygon if coordinates exist */}
+                        <React.Fragment key={`area-${area.id}`}>
                             {polygonPositions && (
                                 <Polygon
                                     positions={polygonPositions}
                                     pathOptions={{
-                                        color: inRoute ? '#4CAF50' : '#cccccc',
-                                        fillColor: inRoute ? '#4CAF50' : '#cccccc',
+                                        color: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
+                                        fillColor: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
                                         fillOpacity: inRoute ? 0.4 : 0.1,
                                         weight: inRoute ? 3 : 1,
                                     }}
                                 >
                                     <Popup>
                                         <strong>{area.name}</strong>
-                                        <br />
-                                        {area.lootTypes && area.lootTypes.length > 0 && (
-                                            <>
-                                                Types: {area.lootTypes.join(', ')}
-                                                <br />
-                                            </>
+                                        {area.lootTypes && <><br/>Types: {area.lootTypes.join(', ')}</>}
+                                        
+                                        {waypoint && waypoint.targetMatchItems && waypoint.targetMatchItems.length > 0 && (
+                                            <div style={{marginTop: '8px', color: '#d32f2f'}}>
+                                                <strong>🎯 Target Loot:</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                    {waypoint.targetMatchItems.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
                                         )}
-                                        {inRoute && (
-                                            <>
-                                                <strong>Route Position: #{routeIndex + 1}</strong>
-                                            </>
+                                        {waypoint && waypoint.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0 && (
+                                            <div style={{marginTop: '8px', color: '#2196F3'}}>
+                                                <strong>Bonus Loot:</strong>
+                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                    {waypoint.ongoingMatchItems.map(item => (
+                                                        <li key={item}>{formatItemWithContext(item)}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
                                         )}
                                     </Popup>
                                 </Polygon>
                             )}
-
-                            {/* Draw numbered marker for areas in route */}
-                            {inRoute ? (
-                                <Marker
-                                    position={coordsToLatLng(area.mapX || 0, area.mapY || 0)}
-                                    icon={createNumberedIcon(routeIndex + 1, isDanger)}
-                                >
-                                    <Popup>
-                                        <strong>
-                                            Stop #{routeIndex + 1}: {area.name}
-                                        </strong>
-                                        <br />
-                                        {area.lootTypes && area.lootTypes.length > 0 && (
-                                            <>Types: {area.lootTypes.join(', ')}</>
-                                        )}
-                                    </Popup>
-                                </Marker>
-                            ) : (
-                                <Marker position={coordsToLatLng(area.mapX || 0, area.mapY || 0)} icon={defaultIcon}>
-                                    <Popup>
-                                        <strong>{area.name}</strong>
-                                        <br />
-                                        {area.lootTypes && area.lootTypes.length > 0 && (
-                                            <>Types: {area.lootTypes.join(', ')}</>
-                                        )}
-                                    </Popup>
-                                </Marker>
-                            )}
+                            {/* Non-route areas get a simple marker if needed, or just polygon. 
+                                We skip non-route markers to reduce clutter, only showing route stops below. */}
                         </React.Fragment>
                     )
                 })}
 
-                {/* Render extraction point marker */}
-                {extractionPoint && extractionCoords && (
-                    <Marker
-                        position={[extractionCoords[0], extractionCoords[1]]}
-                        icon={exitIcon}
-                    >
-                        <Popup>
-                            <strong>🚪 EXTRACTION POINT</strong>
-                            <br />
-                            {extractionPoint}
-                        </Popup>
-                    </Marker>
-                )}
-
-                {/* Render enemy spawn markers */}
-                {enemySpawns.map(
-                    (spawn) => (
+                {/* Render Route Waypoints (Stops) */}
+                {routePath.map((wp, index) => {
+                    const isDanger = wp.lootAbundance === 1
+                    const hasOngoing = wp.ongoingMatchItems && wp.ongoingMatchItems.length > 0
+                    const isMarker = wp.type === 'MARKER'
+                    
+                    return (
                         <Marker
-                            key={spawn.id}
-                            position={[spawn.lat, spawn.lng]}
-                            icon={createEnemyIcon(spawn.onRoute)}
+                            key={`wp-${index}`}
+                            position={coordsToLatLng(wp.x, wp.y)}
+                            icon={createNumberedIcon(index + 1, isDanger, hasOngoing, isMarker)}
                         >
                             <Popup>
-                                <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong>
+                                <strong>Stop #{index + 1}: {wp.name}</strong>
                                 <br />
-                                <strong>{spawn.type.charAt(0).toUpperCase() + spawn.type.slice(1)}</strong>
-                                <br />
-                                {spawn.distanceToRoute !== null && spawn.distanceToRoute !== undefined && (
-                                    <>
-                                        Distance to route: {Math.round(spawn.distanceToRoute)} units
-                                        <br />
-                                    </>
+                                {isMarker && <strong style={{color: '#e65100'}}>⚡ ENEMY TARGET</strong>}
+                                {wp.targetMatchItems && wp.targetMatchItems.length > 0 && (
+                                    <div style={{marginBottom: '8px', color: '#d32f2f'}}>
+                                        <strong>🎯 Target Loot:</strong>
+                                        <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                            {wp.targetMatchItems.map(item => (
+                                                <li key={item}>{formatItemWithContext(item)}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
                                 )}
-                                {spawn.onRoute && (
-                                    <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>✓ Near your route</span>
+                                {wp.ongoingMatchItems && wp.ongoingMatchItems.length > 0 && (
+                                    <div style={{marginTop: '8px', color: '#2196F3'}}>
+                                        <strong>Bonus Loot:</strong>
+                                        <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                            {wp.ongoingMatchItems.map(item => (
+                                                <li key={item}>{formatItemWithContext(item)}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
                                 )}
                             </Popup>
                         </Marker>
                     )
-                )}
-            </MapContainer>
+                })}
 
-            {/* Legend */}
-            <div
-                style={{
-                    position: 'absolute',
-                    bottom: '20px',
-                    left: '20px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    maxWidth: '250px',
-                    zIndex: 1000,
-                    fontSize: '13px',
-                }}
-            >
+                {/* Render extraction point */}
+                {extractionPoint && extractionCoords && (
+                    <Marker position={extractionCoords} icon={exitIcon}>
+                        <Popup><strong>🚪 EXTRACTION POINT</strong><br />{extractionPoint}</Popup>
+                    </Marker>
+                )}
+
+                {/* Render enemy spawns (Opportunity Targets) */}
+                {enemySpawns.map((spawn) => {
+                    // Deduplicate: Don't show an "Opportunity" marker if a "Primary" marker (Waypoint) is already there
+                    const isPrimaryTarget = routePath.some(wp => wp.type === 'MARKER' && Math.abs(wp.x - spawn.lng) < 1 && Math.abs(wp.y - spawn.lat) < 1)
+                    
+                    if (isPrimaryTarget) return null;
+
+                    return (
+                        <Marker
+                            key={`spawn-${spawn.id}`}
+                            position={[spawn.lat, spawn.lng]}
+                            icon={createEnemyIcon(spawn.onRoute)}
+                        >
+                            <Popup>
+                                <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong><br />
+                                <strong>{spawn.type}</strong><br />
+                                {spawn.onRoute && <span style={{ color: '#4CAF50' }}>✓ Near route</span>}
+                                {spawn.droppedItems && spawn.droppedItems.length > 0 && (
+                                    <div style={{marginTop: '8px', color: '#d32f2f'}}>
+                                        <strong>Dropped Loot:</strong>
+                                        <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                            {spawn.droppedItems.map(item => (
+                                                <li key={item}>{formatItemWithContext(item)}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </Popup>
+                        </Marker>
+                    )
+                })}
+            </MapContainer>
+            
+            {/* Legend - Keeping existing style but updated */}
+            <div style={{
+                position: 'absolute', bottom: '20px', left: '20px',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)', padding: '12px',
+                borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                zIndex: 1000, fontSize: '13px'
+            }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Map Legend</div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
-                    <div
-                        style={{
-                            width: '20px',
-                            height: '20px',
-                            backgroundColor: '#4CAF50',
-                            border: '2px solid white',
-                            borderRadius: '50%',
-                            marginRight: '8px',
-                        }}
-                    ></div>
-                    <span>Route stops</span>
+                    <div style={{ width: '20px', height: '20px', backgroundColor: '#4CAF50', borderRadius: '50%', marginRight: '8px', border: '2px solid white' }}></div>
+                    <span>Loot Area Stop</span>
                 </div>
-                {showDangerZones && (
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            marginBottom: '6px',
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: '20px',
-                                height: '20px',
-                                backgroundColor: '#ff0000',
-                                opacity: 0.5,
-                                border: '2px dashed #ff0000',
-                                marginRight: '8px',
-                            }}
-                        ></div>
-                        <span>Danger zones</span>
-                    </div>
-                )}
-                {extractionPoint && (
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <span style={{ fontSize: '20px', marginRight: '8px' }}>🚩</span>
-                        <span>Extraction point</span>
-                    </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ width: '20px', height: '20px', backgroundColor: '#e65100', borderRadius: '50%', marginRight: '8px', border: '3px solid #ff9800' }}></div>
+                    <span>Enemy Target Stop</span>
+                </div>
+                {/* ... other legend items ... */}
             </div>
         </div>
     )

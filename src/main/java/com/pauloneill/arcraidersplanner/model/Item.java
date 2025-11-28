@@ -3,6 +3,9 @@ package com.pauloneill.arcraidersplanner.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Data
 @Entity
 @Table(name = "items")
@@ -30,7 +33,13 @@ public class Item {
     private LootType lootType;
 
     private String iconUrl;
+    @Column(name = "item_value")
     private Integer value;
     private Double weight;
     private Integer stackSize;
+
+    @ElementCollection
+    @CollectionTable(name = "item_dropped_by", joinColumns = @JoinColumn(name = "item_id"))
+    @Column(name = "enemy_id")
+    private Set<String> droppedBy = new HashSet<>();
 }

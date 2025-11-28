@@ -28,12 +28,25 @@ export interface EnemySpawn {
   lng: number;
   onRoute: boolean; // Whether this spawn is near the planned route
   distanceToRoute?: number; // Distance in units from nearest route point
+  droppedItems?: string[]; // New field for items dropped by this enemy type
 }
 
 export interface MapRecommendation {
   mapId: number;
   mapName: string;
   matchingAreaCount: number; // The count used for ranking
+}
+
+export interface Waypoint {
+  id: string; // Changed to string to support both IDs and UUIDs
+  name: string;
+  x: number;
+  y: number;
+  type: "AREA" | "MARKER";
+  lootTypes?: string[];
+  lootAbundance?: number;
+  ongoingMatchItems?: string[];
+  targetMatchItems?: string[];
 }
 
 export interface Area {
@@ -44,6 +57,8 @@ export interface Area {
   coordinates?: string;
   lootTypes: string[];
   lootAbundance?: number;
+  ongoingMatchItems?: string[];
+  targetMatchItems?: string[];
 }
 
 export const RoutingProfile = {
@@ -61,13 +76,36 @@ export interface PlannerRequest {
   targetEnemyTypes: string[]; // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
   hasRaiderKey: boolean;
   routingProfile: RoutingProfile;
+  ongoingItemNames?: string[];
+}
+
+export const RecipeType = {
+  CRAFTING: "CRAFTING",
+  WORKBENCH_UPGRADE: "WORKBENCH_UPGRADE",
+} as const;
+
+export type RecipeType = (typeof RecipeType)[keyof typeof RecipeType];
+
+
+export interface RecipeIngredient {
+  itemId: number;
+  itemName: string;
+  quantity: number;
+}
+
+export interface Recipe {
+  id?: number;
+  name: string;
+  description: string;
+  type: RecipeType;
+  ingredients: RecipeIngredient[];
 }
 
 export interface PlannerResponse {
   mapId: number;
   mapName: string;
   score: number;
-  routePath: Area[];
+  path: Waypoint[];
   extractionPoint?: string;
   extractionLat?: number;  // Calibrated Y coordinate of extraction point
   extractionLng?: number;  // Calibrated X coordinate of extraction point

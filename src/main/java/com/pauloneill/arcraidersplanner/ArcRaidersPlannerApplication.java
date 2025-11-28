@@ -11,11 +11,4 @@ public class ArcRaidersPlannerApplication {
     public static void main(String[] args) {
         SpringApplication.run(ArcRaidersPlannerApplication.class, args);
     }
-
-    @Bean
-    public RestClient restClient(RestClient.Builder builder) {
-        return builder
-                .baseUrl("https://metaforge.app/api/")
-                .build();
-    }
 }

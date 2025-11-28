@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from './Sidebar'
 import DataHUD from './DataHUD'
 import MapComponent from './MapComponent'
 import MapEditor from './MapEditor'
+import RecipeViewer from './RecipeViewer'
 import { RoutingProfile } from './types'
-import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest } from './types'
+import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest, Recipe } from './types'
+import { recipeApi } from './api/recipeApi'
 import './App.css'
 
 const API_PLAN_URL = '/api/items/plan'
@@ -20,14 +22,60 @@ function App() {
     } | null>(null)
     const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null) // Store route separately
     const [stats, setStats] = useState<any | null>(null)
-    const [showEditor, setShowEditor] = useState(false)
+    const [activeEditor, setActiveEditor] = useState<"NONE" | "MAP" | "RECIPE">("NONE")
     const [accessibilityMode, setAccessibilityMode] = useState(false)
 
     // Routing configuration
     const [routingProfile, setRoutingProfile] = useState<RoutingProfile>(RoutingProfile.PURE_SCAVENGER)
     const [hasRaiderKey, setHasRaiderKey] = useState<boolean>(false)
 
+    // Recipe State
+    const [recipes, setRecipes] = useState<Recipe[]>([])
+    const [recipeSelection, setRecipeSelection] = useState<Record<number, "PRIORITY" | "ONGOING" | undefined>>({})
+    const [collectedIngredients, setCollectedIngredients] = useState<Record<number, Record<string, number>>>({})
+    const [itemContextMap, setItemContextMap] = useState<Record<string, string[]>>({})
+
+    useEffect(() => {
+        recipeApi.getAllRecipes().then(setRecipes).catch(console.error)
+        // Load from localStorage
+        const savedSelection = localStorage.getItem('recipeSelection');
+        if (savedSelection) setRecipeSelection(JSON.parse(savedSelection));
+        const savedCollected = localStorage.getItem('collectedIngredients');
+        if (savedCollected) setCollectedIngredients(JSON.parse(savedCollected));
+    }, [])
+
+    useEffect(() => {
+        localStorage.setItem('recipeSelection', JSON.stringify(recipeSelection));
+    }, [recipeSelection])
+
+    useEffect(() => {
+        localStorage.setItem('collectedIngredients', JSON.stringify(collectedIngredients));
+    }, [collectedIngredients])
+
     // Handlers
+    const handleToggleRecipe = (recipeId: number) => {
+        setRecipeSelection(prev => {
+            const current = prev[recipeId];
+            const next = current === undefined ? "PRIORITY" : current === "PRIORITY" ? "ONGOING" : undefined;
+            return { ...prev, [recipeId]: next };
+        });
+    }
+
+    const handleIngredientUpdate = (recipeId: number, ingredientName: string, delta: number) => {
+        setCollectedIngredients(prev => {
+            const recipeCollected = prev[recipeId] || {};
+            const currentCount = recipeCollected[ingredientName] || 0;
+            const newCount = Math.max(0, currentCount + delta);
+            return {
+                ...prev,
+                [recipeId]: {
+                    ...recipeCollected,
+                    [ingredientName]: newCount
+                }
+            };
+        });
+    }
+
     const handleAddToLoadout = (item: Item) => {
         if (loadout.length < 5) {
             setLoadout([...loadout, item])
@@ -58,18 +106,56 @@ function App() {
     }
 
     const handleCalculateRoute = async () => {
-        if (loadout.length === 0 && selectedEnemyTypes.length === 0) return
+        // Check if we have any items, enemies OR recipes selected
+        const hasRecipes = Object.values(recipeSelection).some(v => v !== undefined);
+        if (loadout.length === 0 && selectedEnemyTypes.length === 0 && !hasRecipes) return
 
         setIsCalculating(true)
         setStats(null)
 
         try {
+            // Resolve Recipe Ingredients & Context
+            const targetIngredients: string[] = [];
+            const ongoingIngredients: string[] = [];
+            const contextMap: Record<string, string[]> = {};
+
+            Object.entries(recipeSelection).forEach(([idStr, status]) => {
+                if (!status) return;
+                const recipeId = Number(idStr);
+                const recipe = recipes.find(r => r.id === recipeId);
+                if (recipe) {
+                    const collected = collectedIngredients[recipeId] || {};
+                    
+                    recipe.ingredients.forEach(ing => {
+                        const collectedCount = collected[ing.itemName] || 0;
+                        if (collectedCount < ing.quantity) {
+                            // Item is still needed
+                            if (status === "PRIORITY") {
+                                targetIngredients.push(ing.itemName);
+                            } else if (status === "ONGOING") {
+                                ongoingIngredients.push(ing.itemName);
+                            }
+                            
+                            // Add to context map
+                            if (!contextMap[ing.itemName]) contextMap[ing.itemName] = [];
+                            const label = `${recipe.name} (${status === 'PRIORITY' ? 'Priority' : 'Ongoing'})`;
+                            if (!contextMap[ing.itemName].includes(label)) {
+                                contextMap[ing.itemName].push(label);
+                            }
+                        }
+                    });
+                }
+            });
+            
+            setItemContextMap(contextMap);
+
             // Construct the Request Object using STATE values
             const requestBody: PlannerRequest = {
-                targetItemNames: loadout.map((i) => i.name),
+                targetItemNames: [...loadout.map((i) => i.name), ...targetIngredients],
                 targetEnemyTypes: selectedEnemyTypes,
                 hasRaiderKey: hasRaiderKey,
                 routingProfile: routingProfile,
+                ongoingItemNames: ongoingIngredients,
             }
 
             const planRes = await fetch(API_PLAN_URL, {
@@ -121,8 +207,11 @@ function App() {
     }
 
     // Editor Mode
-    if (showEditor) {
-        return <MapEditor onExit={() => setShowEditor(false)} />
+    if (activeEditor === "MAP") {
+        return <MapEditor onExit={() => setActiveEditor("NONE")} />
+    }
+    if (activeEditor === "RECIPE") {
+        return <RecipeViewer onExit={() => setActiveEditor("NONE")} />
     }
 
     return (
@@ -147,6 +236,12 @@ function App() {
                     setRoutingProfile={setRoutingProfile}
                     hasRaiderKey={hasRaiderKey}
                     setHasRaiderKey={setHasRaiderKey}
+                    // Recipe props
+                    recipes={recipes}
+                    recipeSelection={recipeSelection}
+                    onToggleRecipe={handleToggleRecipe}
+                    collectedIngredients={collectedIngredients}
+                    onIngredientUpdate={handleIngredientUpdate}
                 />
             </div>
 
@@ -166,8 +261,14 @@ function App() {
                             {accessibilityMode ? '[A11Y: ON]' : '[A11Y: OFF]'}
                         </button>
                         <button
-                            onClick={() => setShowEditor(true)}
-                            className="text-xs font-mono text-retro-sand-dim hover:text-retro-orange"
+                            onClick={() => setActiveEditor("RECIPE")}
+                            className="text-xs font-mono text-retro-sand-dim hover:text-retro-orange border border-retro-sand/20 px-2 py-1"
+                        >
+                            🔨 CRAFTING
+                        </button>
+                        <button
+                            onClick={() => setActiveEditor("MAP")}
+                            className="text-xs font-mono text-retro-sand-dim hover:text-retro-orange border border-retro-sand/20 px-2 py-1"
                         >
                             🔧 EDITOR
                         </button>
@@ -181,13 +282,14 @@ function App() {
                             <MapComponent
                                 mapName={mapData.name}
                                 areas={mapData.areas}
-                                routePath={activeRoute?.routePath || []}
+                                routePath={activeRoute?.path || []}
                                 extractionPoint={activeRoute?.extractionPoint}
                                 extractionLat={activeRoute?.extractionLat}
                                 extractionLng={activeRoute?.extractionLng}
                                 routingProfile={routingProfile}
                                 showRoutePath={true}
                                 enemySpawns={activeRoute?.nearbyEnemySpawns || []}
+                                itemContextMap={itemContextMap}
                             />
                         </div>
                     ) : (

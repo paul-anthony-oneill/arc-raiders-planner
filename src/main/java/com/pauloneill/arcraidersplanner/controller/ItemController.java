@@ -102,7 +102,8 @@ public class ItemController {
                 List.of(itemName),
                 null,
                 false,
-                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                java.util.Collections.emptyList() // Added ongoingItemNames
         );
         return plannerService.generateRoute(request);
     }

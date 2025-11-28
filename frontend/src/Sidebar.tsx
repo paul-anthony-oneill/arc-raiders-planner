@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import ItemIndex from "./ItemIndex";
 import EnemyIndex from "./EnemyIndex";
+import RecipeIndex from "./RecipeIndex";
 import { RoutingProfile } from "./types";
-import type { Item, EnemyType } from "./types";
+import type { Item, EnemyType, Recipe } from "./types";
 
 interface SidebarProps {
   onAddToLoadout: (item: Item) => void;
@@ -21,7 +22,65 @@ interface SidebarProps {
   setRoutingProfile: (mode: RoutingProfile) => void;
   hasRaiderKey: boolean;
   setHasRaiderKey: (hasKey: boolean) => void;
+
+  // Recipe Support
+  recipes: Recipe[];
+  recipeSelection: Record<number, "PRIORITY" | "ONGOING" | undefined>;
+  onToggleRecipe: (recipeId: number) => void;
+  collectedIngredients: Record<number, Record<string, number>>;
+  onIngredientUpdate: (recipeId: number, ingredientName: string, delta: number) => void;
 }
+
+const RecipeTracker: React.FC<{
+  recipe: Recipe;
+  status: "PRIORITY" | "ONGOING";
+  collected: Record<string, number>;
+  onUpdate: (name: string, delta: number) => void;
+}> = ({ recipe, status, collected, onUpdate }) => {
+  const isPriority = status === "PRIORITY";
+  const borderColor = isPriority ? "border-retro-orange" : "border-retro-blue";
+  const textColor = isPriority ? "text-retro-orange" : "text-retro-blue";
+  const bgColor = isPriority ? "bg-retro-orange/10" : "bg-retro-blue/10";
+
+  return (
+    <div className={`border ${borderColor} ${bgColor} mb-2 p-2`}>
+      <div className={`text-xs font-bold mb-1 ${textColor} flex justify-between`}>
+        <span className="truncate">{recipe.name}</span>
+        <span className="text-[10px] uppercase">{status}</span>
+      </div>
+      <div className="space-y-1">
+        {recipe.ingredients.map((ing) => {
+          const current = collected[ing.itemName] || 0;
+          const needed = ing.quantity;
+          const isComplete = current >= needed;
+
+          return (
+            <div key={ing.itemName} className="flex items-center justify-between text-xs font-mono">
+              <span className={`truncate flex-1 ${isComplete ? "text-retro-sand-dim line-through opacity-50" : "text-retro-sand"}`}>
+                {ing.itemName}
+              </span>
+              <div className="flex items-center gap-1 bg-retro-black/50 px-1 border border-retro-sand/10">
+                 <button 
+                    onClick={() => onUpdate(ing.itemName, -1)}
+                    disabled={current <= 0}
+                    className="text-retro-red hover:text-white disabled:opacity-30 px-1 font-bold"
+                 >-</button>
+                 <span className={`w-6 text-center ${isComplete ? "text-green-400" : "text-retro-sand"}`}>
+                    {current}/{needed}
+                 </span>
+                 <button 
+                    onClick={() => onUpdate(ing.itemName, 1)}
+                    disabled={current >= needed}
+                    className="text-green-400 hover:text-white disabled:opacity-30 px-1 font-bold"
+                 >+</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const Sidebar: React.FC<SidebarProps> = ({
   onAddToLoadout,
@@ -36,8 +95,17 @@ const Sidebar: React.FC<SidebarProps> = ({
   setRoutingProfile,
   hasRaiderKey,
   setHasRaiderKey,
+  recipes,
+  recipeSelection,
+  onToggleRecipe,
+  collectedIngredients,
+  onIngredientUpdate,
 }) => {
-  const [targetType, setTargetType] = useState<"items" | "enemies">("items");
+  const [targetType, setTargetType] = useState<"items" | "enemies" | "recipes">("items");
+
+  // Filter active recipes
+  const activeRecipes = recipes.filter(r => recipeSelection[r.id!] !== undefined);
+
   return (
     <aside className="flex flex-col h-full border-r-2 border-retro-sand/20 bg-retro-dark/90 relative overflow-hidden">
       {/* CRT Overlay for Sidebar */}
@@ -82,16 +150,32 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               ARC Enemies
             </button>
+            <button
+              onClick={() => setTargetType("recipes")}
+              className={`flex-1 py-2 px-3 text-xs font-mono uppercase tracking-wider transition-all ${
+                targetType === "recipes"
+                  ? "bg-retro-blue text-retro-black border border-retro-blue"
+                  : "bg-retro-black/50 text-retro-sand-dim border border-retro-sand/20 hover:border-retro-blue/50"
+              }`}
+            >
+              Recipes
+            </button>
           </div>
 
           {/* Conditional Rendering */}
           <div className="opacity-90 transform scale-95 origin-top-left w-[105%]">
             {targetType === "items" ? (
               <ItemIndex onItemSelected={onAddToLoadout} />
-            ) : (
+            ) : targetType === "enemies" ? (
               <EnemyIndex
                 onEnemyTypeSelected={onAddEnemyType}
                 selectedEnemyTypes={selectedEnemyTypes}
+              />
+            ) : (
+              <RecipeIndex 
+                recipes={recipes}
+                selectionState={recipeSelection}
+                onToggleRecipe={onToggleRecipe}
               />
             )}
           </div>
@@ -104,16 +188,28 @@ const Sidebar: React.FC<SidebarProps> = ({
         <h3 className="text-sm text-retro-sand font-bold mb-3 uppercase tracking-wider flex justify-between items-center">
           <span>{">"} Targets</span>
           <span className="text-retro-orange">
-            {loadout.length + selectedEnemyTypes.length}/10
+            {loadout.length + selectedEnemyTypes.length + activeRecipes.length}/10
           </span>
         </h3>
 
         <div className="space-y-2 mb-4 max-h-32 overflow-y-auto custom-scrollbar">
-          {loadout.length === 0 && selectedEnemyTypes.length === 0 && (
+          {loadout.length === 0 && selectedEnemyTypes.length === 0 && activeRecipes.length === 0 && (
             <div className="text-xs text-retro-sand-dim italic text-center py-4 border border-dashed border-retro-sand-dim/30">
               NO OBJECTIVES SELECTED
             </div>
           )}
+          
+          {/* Recipe Trackers */}
+          {activeRecipes.map(recipe => (
+            <RecipeTracker 
+                key={`recipe-${recipe.id}`}
+                recipe={recipe}
+                status={recipeSelection[recipe.id!]!}
+                collected={collectedIngredients[recipe.id!] || {}}
+                onUpdate={(name, delta) => onIngredientUpdate(recipe.id!, name, delta)}
+            />
+          ))}
+
           {loadout.map((item, idx) => (
             <div
               key={`item-${item.id}-${idx}`}
@@ -221,7 +317,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={onCalculate}
           disabled={
             isCalculating ||
-            (loadout.length === 0 && selectedEnemyTypes.length === 0)
+            (loadout.length === 0 && selectedEnemyTypes.length === 0 && activeRecipes.length === 0)
           }
           className={`
                         w-full py-4 font-display font-bold text-lg tracking-widest uppercase
@@ -229,7 +325,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         ${
                           isCalculating ||
                           (loadout.length === 0 &&
-                            selectedEnemyTypes.length === 0)
+                            selectedEnemyTypes.length === 0 &&
+                            activeRecipes.length === 0)
                             ? "border-retro-sand-dim text-retro-sand-dim cursor-not-allowed opacity-50"
                             : "border-retro-orange text-retro-black bg-retro-orange hover:bg-retro-orange-dim hover:border-retro-orange-dim box-glow"
                         }

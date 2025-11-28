@@ -6,7 +6,7 @@ public record PlannerResponseDto(
         Long mapId,
         String mapName,
         double score,
-        List<AreaDto> routePath,
+        List<WaypointDto> path,
         String extractionPoint,
         Double extractionLat,  // Calibrated Y coordinate of extraction point
         Double extractionLng,  // Calibrated X coordinate of extraction point

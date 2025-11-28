@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -79,29 +80,36 @@ public class MapController {
                 return mapRepository.findAll();
         }
 
-        /**
-         * Get all markers for a specific map.
-         * WHY: Frontend needs marker locations (ARC enemies, Raider Hatches) to render
-         * points of interest on the map visualization.
-         *
-         * @param id Database ID of the map
-         * @return List of markers with types, names, and lat/lng coordinates
-         */
-        @Operation(summary = "Get map markers", description = "Retrieves all markers (ARC enemy spawns, Raider Hatches, etc.) for a specific map")
-        @ApiResponses({
-                        @ApiResponse(responseCode = "200", description = "Markers retrieved successfully", content = @Content(schema = @Schema(implementation = MapMarker.class))),
-                        @ApiResponse(responseCode = "404", description = "Map not found")
-        })
-        @GetMapping("/{id}/markers")
-        public ResponseEntity<List<MapMarker>> getMapMarkers(
-                        @Parameter(description = "Database ID of the map", required = true) @PathVariable Long id) {
-                return mapRepository.findById(id)
-                                .map(map -> {
-                                        List<MapMarker> markers = mapMarkerRepository.findByGameMapId(id);
-                                        return ResponseEntity.ok(markers);
-                                })
-                                .orElse(ResponseEntity.notFound().build());
-        }
+        // /**
+        // * Get all markers for a specific map.
+        // * WHY: Frontend needs marker locations (ARC enemies, Raider Hatches) to
+        // render
+        // * points of interest on the map visualization.
+        // *
+        // * @param id Database ID of the map
+        // * @return List of markers with types, names, and lat/lng coordinates
+        // */
+        // @Operation(summary = "Get map markers", description = "Retrieves all markers
+        // (ARC enemy spawns, Raider Hatches, etc.) for a specific map")
+        // @ApiResponses({
+        // @ApiResponse(responseCode = "200", description = "Markers retrieved
+        // successfully", content = @Content(schema = @Schema(implementation =
+        // MapMarker.class))),
+        // @ApiResponse(responseCode = "404", description = "Map not found")
+        // })
+        // @GetMapping("/{id}/markers")
+        // public ResponseEntity<List<MapMarker>> getMapMarkers(
+        // @Parameter(description = "Database ID of the map", required = true)
+        // @PathVariable("id") Long mapDbId) {
+        // // First, check if the map exists
+        // Optional<GameMap> gameMapOptional = mapRepository.findById(mapDbId);
+        // if (gameMapOptional.isEmpty()) {
+        // return ResponseEntity.notFound().build();
+        // }
+        // // If map exists, retrieve markers
+        // List<MapMarker> markers = mapMarkerRepository.findByGameMapId(mapDbId);
+        // return ResponseEntity.ok(markers);
+        // }
 
         private GameMapDto convertToDto(GameMap map) {
                 GameMapDto dto = new GameMapDto();
@@ -123,7 +131,7 @@ public class MapController {
 
         private AreaDto convertAreaToDto(Area area) {
                 AreaDto dto = new AreaDto();
-                dto.setId(area.getId());
+                dto.setId(Long.valueOf(area.getId()));
                 dto.setName(area.getName());
                 dto.setMapX(area.getMapX());
                 dto.setMapY(area.getMapY());
