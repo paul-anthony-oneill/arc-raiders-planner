@@ -334,6 +334,16 @@ const MapComponent: React.FC<MapProps> = ({
                                 <strong>⚡ {spawn.onRoute ? 'ON ROUTE' : 'OFF ROUTE'}</strong><br />
                                 <strong>{spawn.type}</strong><br />
                                 {spawn.onRoute && <span style={{ color: '#4CAF50' }}>✓ Near route</span>}
+                                {spawn.droppedItems && spawn.droppedItems.length > 0 && (
+                                    <div style={{marginTop: '8px', color: '#d32f2f'}}>
+                                        <strong>Dropped Loot:</strong>
+                                        <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                            {spawn.droppedItems.map(item => (
+                                                <li key={item}>{formatItemWithContext(item)}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                             </Popup>
                         </Marker>
                     )

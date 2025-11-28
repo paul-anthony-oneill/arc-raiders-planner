@@ -28,6 +28,7 @@ export interface EnemySpawn {
   lng: number;
   onRoute: boolean; // Whether this spawn is near the planned route
   distanceToRoute?: number; // Distance in units from nearest route point
+  droppedItems?: string[]; // New field for items dropped by this enemy type
 }
 
 export interface MapRecommendation {

@@ -125,7 +125,8 @@ public class PlannerService {
                     dangerZones,
                     extractionMarkers,
                     enemySpawnsOnMap, // All enemies for proximity scoring
-                    map);
+                    map,
+                    enemyTypeToItemNames);
 
             // Resolve Ongoing Items Map: LootType Name -> List of Item Names
             Map<String, List<String>> ongoingLootMap = resolveOngoingItems(request.ongoingItemNames());
@@ -202,12 +203,13 @@ public class PlannerService {
             List<Area> dangerZones,
             List<MapMarker> extractionMarkers,
             List<MapMarker> allTargetEnemiesOnMap, // All enemies for proximity scoring
-            GameMap map) {
+            GameMap map,
+            Map<String, List<String>> enemyTypeToItemNames) {
 
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
         if (profile == PlannerRequestDto.RoutingProfile.PURE_SCAVENGER) {
-            List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(allTargetEnemiesOnMap, viablePoints);
+            List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(allTargetEnemiesOnMap, viablePoints, enemyTypeToItemNames);
             // In PURE_SCAVENGER, we return all viablePoints (Area or Marker)
             return new RouteResult(viablePoints.size() * 100.0, viablePoints, null, null, null, enemySpawnDtos);
         }
@@ -244,7 +246,7 @@ public class PlannerService {
 
         if (routablePointsForTSP.isEmpty()) {
             log.debug("No viable points found - returning fallback extraction point if available");
-            List<EnemySpawnDto> emptySpawns = convertToEnemySpawnDtos(allTargetEnemiesOnMap, Collections.emptyList());
+            List<EnemySpawnDto> emptySpawns = convertToEnemySpawnDtos(allTargetEnemiesOnMap, Collections.emptyList(), enemyTypeToItemNames);
 
             // Still calculate extraction point even with no route
             String bestExit = null;
@@ -342,8 +344,7 @@ public class PlannerService {
         }
 
         // Convert enemy spawns to DTOs with proximity info
-        List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(allTargetEnemiesOnMap, path);
-
+        List<EnemySpawnDto> enemySpawnDtos = convertToEnemySpawnDtos(allTargetEnemiesOnMap, path, enemyTypeToItemNames);
         return new RouteResult(totalScore, path, bestExit, extractionLat, extractionLng, enemySpawnDtos);
     }
 
@@ -607,7 +608,7 @@ public class PlannerService {
      * @param path    The optimized loot route (List of RoutablePoints)
      * @return List of EnemySpawnDto with onRoute status and distances
      */
-    private List<EnemySpawnDto> convertToEnemySpawnDtos(List<MapMarker> enemies, List<? extends RoutablePoint> path) {
+    private List<EnemySpawnDto> convertToEnemySpawnDtos(List<MapMarker> enemies, List<? extends RoutablePoint> path, Map<String, List<String>> enemyTypeToItemNames) {
         if (enemies.isEmpty()) {
             return Collections.emptyList();
         }
@@ -633,7 +634,8 @@ public class PlannerService {
                             enemy.getLat(),
                             enemy.getLng(),
                             onRoute,
-                            distanceToRoute);
+                            distanceToRoute,
+                            enemyTypeToItemNames.getOrDefault(enemy.getSubcategory(), Collections.emptyList()));
                 })
                 .toList();
     }
