@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Area, Waypoint, EnemySpawn, RoutingProfile } from './types'
@@ -120,12 +120,35 @@ const MapComponent: React.FC<MapProps> = ({
     // Determine if we should show danger zones
     const showDangerZones = routingProfile === 'AVOID_PVP' || routingProfile === 'SAFE_EXFIL'
 
-    // Filter danger zones (lootAbundance === 1)
-    const dangerZones = showDangerZones ? areas.filter((area) => area.lootAbundance === 1) : []
+    // Pre-parse all area coordinates once (eliminates JSON.parse in render loop)
+    const parsedAreas = useMemo(() => {
+        return areas.map(area => {
+            let parsedCoordinates = null;
+            if (area.coordinates) {
+                try {
+                    parsedCoordinates = JSON.parse(area.coordinates);
+                } catch (e) {
+                    console.error(`Failed to parse coordinates for area ${area.id}:`, e);
+                }
+            }
+            return {
+                ...area,
+                parsedCoordinates
+            };
+        });
+    }, [areas]);
 
-    // Get route path coordinates for polyline
-    // Waypoint uses x,y. Area uses mapX, mapY. Waypoint normalizes this.
-    const routePathCoords: L.LatLngExpression[] = routePath.map((wp) => coordsToLatLng(wp.x, wp.y))
+    // Memoize danger zones filtering
+    const dangerZones = useMemo(() => {
+        return showDangerZones
+            ? parsedAreas.filter(area => area.lootAbundance === 1)
+            : [];
+    }, [showDangerZones, parsedAreas]);
+
+    // Memoize route path coordinates
+    const routePathCoords = useMemo(() => {
+        return routePath.map((wp) => coordsToLatLng(wp.x, wp.y));
+    }, [routePath])
 
     // Find extraction point coordinates (if exists)
     let extractionCoords: L.LatLngTuple | null = null
@@ -168,15 +191,10 @@ const MapComponent: React.FC<MapProps> = ({
 
                 {/* Render danger zones (bottom layer) */}
                 {dangerZones.map((area) => {
-                    let polygonPositions: L.LatLngExpression[] | null = null
-                    if (area.coordinates) {
-                        try {
-                            polygonPositions = JSON.parse(area.coordinates)
-                        } catch (e) {
-                            console.error(`Failed to parse coordinates for area ${area.name}`, e)
-                        }
-                    }
-                    return polygonPositions ? (
+                    const polygonPositions = area.parsedCoordinates;
+                    if (!polygonPositions) return null;
+
+                    return (
                         <Polygon
                             key={`danger-${area.id}`}
                             positions={polygonPositions}
@@ -192,7 +210,7 @@ const MapComponent: React.FC<MapProps> = ({
                                 <strong>⚠️ DANGER ZONE</strong><br />{area.name}
                             </Popup>
                         </Polygon>
-                    ) : null
+                    );
                 })}
 
                 {/* Render route path polyline */}
@@ -209,13 +227,9 @@ const MapComponent: React.FC<MapProps> = ({
                 )}
 
                 {/* Render Area Polygons */}
-                {areas.map((area) => {
-                    let polygonPositions: L.LatLngExpression[] | null = null
-                    if (area.coordinates) {
-                        try {
-                            polygonPositions = JSON.parse(area.coordinates)
-                        } catch (e) { console.error(e) }
-                    }
+                {parsedAreas.map((area) => {
+                    const polygonPositions = area.parsedCoordinates;
+                    if (!polygonPositions) return null;
 
                     const waypoint = getWaypointForArea(area.id)
                     const inRoute = !!waypoint
@@ -226,44 +240,42 @@ const MapComponent: React.FC<MapProps> = ({
 
                     return (
                         <React.Fragment key={`area-${area.id}`}>
-                            {polygonPositions && (
-                                <Polygon
-                                    positions={polygonPositions}
-                                    pathOptions={{
-                                        color: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
-                                        fillColor: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
-                                        fillOpacity: inRoute ? 0.4 : 0.1,
-                                        weight: inRoute ? 3 : 1,
-                                    }}
-                                >
-                                    <Popup>
-                                        <strong>{area.name}</strong>
-                                        {area.lootTypes && <><br/>Types: {area.lootTypes.join(', ')}</>}
-                                        
-                                        {waypoint && waypoint.targetMatchItems && waypoint.targetMatchItems.length > 0 && (
-                                            <div style={{marginTop: '8px', color: '#d32f2f'}}>
-                                                <strong>🎯 Target Loot:</strong>
-                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
-                                                    {waypoint.targetMatchItems.map(item => (
-                                                        <li key={item}>{formatItemWithContext(item)}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {waypoint && waypoint.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0 && (
-                                            <div style={{marginTop: '8px', color: '#2196F3'}}>
-                                                <strong>Bonus Loot:</strong>
-                                                <ul style={{margin: '0', paddingLeft: '16px'}}>
-                                                    {waypoint.ongoingMatchItems.map(item => (
-                                                        <li key={item}>{formatItemWithContext(item)}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </Popup>
-                                </Polygon>
-                            )}
-                            {/* Non-route areas get a simple marker if needed, or just polygon. 
+                            <Polygon
+                                positions={polygonPositions}
+                                pathOptions={{
+                                    color: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
+                                    fillColor: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
+                                    fillOpacity: inRoute ? 0.4 : 0.1,
+                                    weight: inRoute ? 3 : 1,
+                                }}
+                            >
+                                <Popup>
+                                    <strong>{area.name}</strong>
+                                    {area.lootTypes && <><br/>Types: {area.lootTypes.join(', ')}</>}
+
+                                    {waypoint && waypoint.targetMatchItems && waypoint.targetMatchItems.length > 0 && (
+                                        <div style={{marginTop: '8px', color: '#d32f2f'}}>
+                                            <strong>🎯 Target Loot:</strong>
+                                            <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                {waypoint.targetMatchItems.map(item => (
+                                                    <li key={item}>{formatItemWithContext(item)}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {waypoint && waypoint.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0 && (
+                                        <div style={{marginTop: '8px', color: '#2196F3'}}>
+                                            <strong>Bonus Loot:</strong>
+                                            <ul style={{margin: '0', paddingLeft: '16px'}}>
+                                                {waypoint.ongoingMatchItems.map(item => (
+                                                    <li key={item}>{formatItemWithContext(item)}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </Popup>
+                            </Polygon>
+                            {/* Non-route areas get a simple marker if needed, or just polygon.
                                 We skip non-route markers to reduce clutter, only showing route stops below. */}
                         </React.Fragment>
                     )
