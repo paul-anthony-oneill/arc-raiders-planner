@@ -41,6 +41,7 @@ build/
 ### Development ###
 dev/
 nul
+scripts/
 
 node_modules/
 npm-debug.log

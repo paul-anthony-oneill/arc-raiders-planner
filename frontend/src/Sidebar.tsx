@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import ItemIndex from "./ItemIndex";
 import EnemyIndex from "./EnemyIndex";
 import RecipeIndex from "./RecipeIndex";
@@ -104,7 +104,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [targetType, setTargetType] = useState<"items" | "enemies" | "recipes">("items");
 
   // Filter active recipes
-  const activeRecipes = recipes.filter(r => recipeSelection[r.id!] !== undefined);
+  const activeRecipes = useMemo(() =>
+    recipes.filter(r => recipeSelection[r.id!] !== undefined),
+    [recipes, recipeSelection]
+  );
 
   return (
     <aside className="flex flex-col h-full border-r-2 border-retro-sand/20 bg-retro-dark/90 relative overflow-hidden">
@@ -220,9 +223,10 @@ const Sidebar: React.FC<SidebarProps> = ({
               </span>
               <button
                 onClick={() => onRemoveFromLoadout(idx)}
-                className="text-retro-red hover:text-retro-orange px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label={`Remove ${item.name} from loadout`}
+                className="text-retro-red hover:text-retro-orange px-2"
               >
-                [X]
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           ))}
@@ -236,9 +240,10 @@ const Sidebar: React.FC<SidebarProps> = ({
               </span>
               <button
                 onClick={() => onRemoveEnemyType(idx)}
-                className="text-retro-red hover:text-retro-orange px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label={`Remove ${enemyType} from targets`}
+                className="text-retro-red hover:text-retro-orange px-2"
               >
-                [X]
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           ))}
@@ -319,6 +324,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             isCalculating ||
             (loadout.length === 0 && selectedEnemyTypes.length === 0 && activeRecipes.length === 0)
           }
+          aria-label="Calculate optimal route"
+          aria-busy={isCalculating}
           className={`
                         w-full py-4 font-display font-bold text-lg tracking-widest uppercase
                         border-2 transition-all duration-200 relative overflow-hidden group
@@ -341,4 +348,4 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);

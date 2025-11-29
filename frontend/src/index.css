@@ -44,6 +44,10 @@
   .scanline-anim {
     animation: scanline 8s linear infinite;
   }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
 }
 
 @keyframes scanline {
@@ -53,6 +57,18 @@
 
   100% {
     background-position: 0 100%;
+  }
+}
+
+@keyframes slideIn {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
   }
 }
 
@@ -87,4 +103,17 @@ body.accessibility-mode .crt-overlay {
 body.accessibility-mode {
   text-shadow: none !important;
   font-family: ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Screen reader only class for accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

@@ -41,13 +41,22 @@ const ItemIndex: React.FC<ItemIndexProps> = ({ onItemSelected }) => {
 
   const visibleItems = items.filter((item) => item.lootType !== null);
 
+  const handleKeyDown = (e: React.KeyboardEvent, item: Item) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onItemSelected(item);
+    }
+  };
+
   return (
     <div
       className="item-index-container"
       style={{ maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif" }}
     >
       <h2>ARC Raiders Item Index ({visibleItems.length} Total)</h2>
+      <label htmlFor="item-search" className="sr-only">Search items</label>
       <input
+        id="item-search"
         type="text"
         placeholder="Search items (e.g., circuit, gear)..."
         value={searchTerm}
@@ -79,8 +88,11 @@ const ItemIndex: React.FC<ItemIndexProps> = ({ onItemSelected }) => {
           ? visibleItems.map((item) => (
               <div
                 key={item.id}
-                className="item-card"
+                role="button"
+                tabIndex={0}
+                className="item-card cursor-pointer outline-none focus:ring-2 focus:ring-retro-orange"
                 onClick={() => onItemSelected(item)}
+                onKeyDown={(e) => handleKeyDown(e, item)}
                 style={{
                   border: "1px solid #eee",
                   padding: "10px",
@@ -88,7 +100,6 @@ const ItemIndex: React.FC<ItemIndexProps> = ({ onItemSelected }) => {
                   borderRadius: "4px",
                   display: "flex",
                   alignItems: "center",
-                  cursor: "pointer",
                 }}
               >
                 <div className="item-icon-container">
