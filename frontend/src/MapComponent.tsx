@@ -148,7 +148,7 @@ const MapComponent: React.FC<MapProps> = ({
     // Memoize route path coordinates
     const routePathCoords = useMemo(() => {
         return routePath.map((wp) => coordsToLatLng(wp.x, wp.y));
-    }, [routePath])
+    }, [routePath]);
 
     // Find extraction point coordinates (if exists)
     let extractionCoords: L.LatLngTuple | null = null
