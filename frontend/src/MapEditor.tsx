@@ -7,6 +7,7 @@ import { type GameMap, type GameMarker } from './utils/mapUtils'
 
 interface MapEditorProps {
     onExit: () => void
+    showToast: (message: string, type: 'error' | 'success' | 'info') => void
 }
 
 // --- STYLES ---
@@ -53,7 +54,7 @@ const ClickHandler: React.FC<{ onClick: (latlng: L.LatLng) => void }> = ({ onCli
     return null
 }
 
-const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
+const MapEditor: React.FC<MapEditorProps> = ({ onExit, showToast }) => {
     const bounds: L.LatLngBoundsLiteral = [
         [-1000, -1000],
         [1000, 1000],
@@ -132,7 +133,10 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
 
     // --- CALIBRATION HANDLERS (4-Point Logic) ---
     const handleCalibrationClick = (latlng: L.LatLng) => {
-        if (calPoints.length >= 4) return alert("Calibration complete (4 points set). Click 'Calculate & Save'.")
+        if (calPoints.length >= 4) {
+            showToast("Calibration complete (4 points set). Click 'Calculate & Save'.", 'info')
+            return
+        }
         setCurrentLocalPoint(latlng)
         setShowCalInput(true)
     }
@@ -175,7 +179,10 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
             offsetY,
         })
 
-        if (!isFinite(scaleX) || !isFinite(scaleY)) return alert('Invalid calculation.')
+        if (!isFinite(scaleX) || !isFinite(scaleY)) {
+            showToast('Invalid calculation.', 'error')
+            return
+        }
 
         try {
             const res = await fetch(`/api/maps/${selectedMap.id}/calibration`, {
@@ -185,7 +192,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
             })
 
             if (res.ok) {
-                alert(`Calibration Saved!\nScale X: ${scaleX.toFixed(5)}\nScale Y: ${scaleY.toFixed(5)}`)
+                showToast(`Calibration saved successfully! Scale X: ${scaleX.toFixed(5)}, Scale Y: ${scaleY.toFixed(5)}`, 'success')
                 setIsCalibrating(false)
                 setCalPoints([])
 
@@ -197,7 +204,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
                     calibrationOffsetY: offsetY,
                 })
             } else {
-                alert('Failed to save calibration.')
+                showToast('Failed to save calibration.', 'error')
             }
         } catch (e) {
             console.error(e)
@@ -228,8 +235,14 @@ const MapEditor: React.FC<MapEditorProps> = ({ onExit }) => {
     }
 
     const handleGenerate = () => {
-        if (drawPoints.length < 3) return alert('Polygon needs at least 3 points.')
-        if (!selectedMap || !areaName) return alert('Please enter an Area Name.')
+        if (drawPoints.length < 3) {
+            showToast('Polygon needs at least 3 points.', 'error')
+            return
+        }
+        if (!selectedMap || !areaName) {
+            showToast('Please enter an Area Name.', 'error')
+            return
+        }
 
         const center = calculateCenter(drawPoints)
         const coordString = JSON.stringify(drawPoints.map((p) => [p.lat, p.lng]))

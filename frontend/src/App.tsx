@@ -222,7 +222,7 @@ function App() {
 
     // Editor Mode
     if (activeEditor === "MAP") {
-        return <MapEditor onExit={() => setActiveEditor("NONE")} />
+        return <MapEditor onExit={() => setActiveEditor("NONE")} showToast={showToast} />
     }
     if (activeEditor === "RECIPE") {
         return <RecipeViewer onExit={() => setActiveEditor("NONE")} />
