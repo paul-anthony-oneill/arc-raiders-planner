@@ -41,6 +41,10 @@ function App() {
     // Mobile Sidebar State
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
+    const toggleSidebar = useCallback(() => {
+        setIsSidebarOpen(prev => !prev);
+    }, []);
+
     useEffect(() => {
         recipeApi.getAllRecipes().then(setRecipes).catch(console.error)
         // Load from localStorage
@@ -236,7 +240,7 @@ function App() {
             {/* Mobile Sidebar Toggle */}
             <button
                 className="md:hidden fixed top-4 left-4 z-50 p-2 bg-retro-dark border border-retro-sand/20 text-retro-sand"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                onClick={toggleSidebar}
                 aria-label="Toggle Navigation"
                 aria-expanded={isSidebarOpen}
             >
@@ -343,14 +347,21 @@ function App() {
             </main>
 
             {/* Toast Notifications */}
-            {toasts.map(toast => (
-                <Toast
-                    key={toast.id}
-                    message={toast.message}
-                    type={toast.type}
-                    onClose={() => hideToast(toast.id)}
-                />
-            ))}
+            <div
+                role="region"
+                aria-label="Notifications"
+                aria-live="polite"
+                className="fixed top-20 right-4 z-50 flex flex-col gap-2"
+            >
+                {toasts.map(toast => (
+                    <Toast
+                        key={toast.id}
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => hideToast(toast.id)}
+                    />
+                ))}
+            </div>
         </div>
     )
 }

@@ -87,6 +87,11 @@ const createNumberedIcon = (number: number, isDanger: boolean = false, hasOngoin
     })
 }
 
+// Pure function to convert coordinates - moved outside component for stability
+const coordsToLatLng = (x: number, y: number): L.LatLngTuple => {
+    return [y, x] as L.LatLngTuple
+}
+
 const MapComponent: React.FC<MapProps> = ({
     mapName,
     areas,
@@ -107,10 +112,6 @@ const MapComponent: React.FC<MapProps> = ({
         [-1500, -1500],
         [1500, 1500],
     ]
-
-    const coordsToLatLng = (x: number, y: number): L.LatLngTuple => {
-        return [y, x] as L.LatLngTuple
-    }
 
     const getMapImageUrl = (name: string) => {
         const filename = name.toLowerCase().replace(/ /g, '_')

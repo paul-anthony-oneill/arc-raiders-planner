@@ -29,7 +29,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration =
 
     return (
         <div
-            className={`fixed top-20 right-4 z-50 px-6 py-4 border-l-4 shadow-lg animate-slide-in max-w-md ${styles[type]}`}
+            className={`relative px-6 py-4 border-l-4 shadow-lg animate-slide-in max-w-md ${styles[type]}`}
             role="alert"
             aria-live="assertive"
         >
@@ -39,7 +39,13 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration =
             <p className="text-sm text-retro-sand font-mono">{message}</p>
             <button
                 onClick={onClose}
-                className="absolute top-2 right-2 text-retro-sand/50 hover:text-retro-sand"
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onClose();
+                    }
+                }}
+                className="absolute top-2 right-2 text-retro-sand/50 hover:text-retro-sand focus:outline-none focus:ring-2 focus:ring-retro-orange"
                 aria-label="Close notification"
             >
                 ✕

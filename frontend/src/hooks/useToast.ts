@@ -13,7 +13,7 @@ export const useToast = () => {
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
     const showToast = useCallback((message: string, type: ToastType = 'info') => {
-        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9);
+        const id = crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2, 11);
         setToasts(prev => [...prev, { message, type, id }]);
     }, []);
 
