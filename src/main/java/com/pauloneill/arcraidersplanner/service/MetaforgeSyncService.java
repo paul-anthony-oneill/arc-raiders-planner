@@ -1,5 +1,7 @@
 package com.pauloneill.arcraidersplanner.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pauloneill.arcraidersplanner.dto.HideoutUpgradeDto;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDataResponse;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDto;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeMapDataResponse;
@@ -13,6 +15,9 @@ import com.pauloneill.arcraidersplanner.repository.RecipeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -35,6 +40,7 @@ public class MetaforgeSyncService {
     private final GameMapRepository gameMapRepository;
     private final RecipeRepository recipeRepository;
     private final CoordinateCalibrationService calibrationService;
+    private final ObjectMapper objectMapper;
 
     @Value("${metaforge.api.url}")
     private String metaforgeApiUrl;
@@ -42,7 +48,7 @@ public class MetaforgeSyncService {
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
             LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository,
             GameMapRepository gameMapRepository, RecipeRepository recipeRepository,
-            CoordinateCalibrationService calibrationService) {
+            CoordinateCalibrationService calibrationService, ObjectMapper objectMapper) {
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
@@ -50,6 +56,7 @@ public class MetaforgeSyncService {
         this.gameMapRepository = gameMapRepository;
         this.recipeRepository = recipeRepository;
         this.calibrationService = calibrationService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -126,6 +133,9 @@ public class MetaforgeSyncService {
         log.info("Successfully synced {} items across {} pages.", totalItemsSynced, totalPages);
         log.info("Recipe sync complete: {} created, {} updated, {} skipped",
                 recipesCreated, recipesUpdated, recipesSkipped);
+                
+        // Sync Workbench Upgrades from local JSONs
+        syncWorkbenchUpgrades();
     }
 
     private Item getItemToSave(MetaforgeItemDto dto, Optional<Item> existingItem, LootType lootType) {
@@ -138,6 +148,8 @@ public class MetaforgeSyncService {
         itemToSave.setIconUrl(dto.icon());
         itemToSave.setValue(dto.value());
         itemToSave.setLootType(lootType);
+        // Link to Metaforge ID for ingredients lookup
+        itemToSave.setMetaforgeId(dto.id());
 
         if (dto.stats() != null) {
             itemToSave.setWeight(dto.stats().weight());
@@ -157,6 +169,72 @@ public class MetaforgeSyncService {
         }
 
         return itemToSave;
+    }
+
+    @Transactional
+    public void syncWorkbenchUpgrades() {
+        log.info("--- STARTING WORKBENCH UPGRADE SYNC ---");
+        ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        try {
+            Resource[] resources = resolver.getResources("classpath:data/hideout/*.json");
+            log.info("Found {} hideout definition files", resources.length);
+            
+            for (Resource resource : resources) {
+                try {
+                    HideoutUpgradeDto dto = objectMapper.readValue(resource.getInputStream(), HideoutUpgradeDto.class);
+                    processHideoutUpgrade(dto);
+                } catch (Exception e) {
+                    log.error("Failed to parse hideout file: {}", resource.getFilename(), e);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to load hideout resources", e);
+        }
+        log.info("--- WORKBENCH UPGRADE SYNC COMPLETE ---");
+    }
+
+    private void processHideoutUpgrade(HideoutUpgradeDto dto) {
+        String benchName = dto.name().getOrDefault("en", "Unknown Bench");
+        
+        for (HideoutUpgradeDto.UpgradeLevel level : dto.levels()) {
+            String metaforgeId = "hideout_" + dto.id() + "_lvl" + level.level();
+            String recipeName = benchName + " Level " + level.level();
+            
+            Optional<Recipe> existingRecipe = recipeRepository.findByMetaforgeItemId(metaforgeId);
+            
+            Recipe recipe;
+            if (existingRecipe.isPresent()) {
+                recipe = existingRecipe.get();
+                recipe.getIngredients().clear();
+            } else {
+                recipe = new Recipe();
+                recipe.setMetaforgeItemId(metaforgeId);
+            }
+            
+            recipe.setName(recipeName);
+            recipe.setDescription("Upgrade " + benchName + " to Level " + level.level());
+            recipe.setType(RecipeType.WORKBENCH_UPGRADE);
+            recipe.setIsRecyclable(false);
+            
+            int ingredientsAdded = 0;
+            for (HideoutUpgradeDto.Requirement req : level.requirementItemIds()) {
+                Optional<Item> itemOpt = itemRepository.findByMetaforgeId(req.itemId());
+                
+                if (itemOpt.isPresent()) {
+                    RecipeIngredient ingredient = new RecipeIngredient();
+                    ingredient.setItem(itemOpt.get());
+                    ingredient.setQuantity(req.quantity());
+                    recipe.addIngredient(ingredient);
+                    ingredientsAdded++;
+                } else {
+                    log.warn("Missing ingredient for upgrade '{}': {} (Metaforge ID)", recipeName, req.itemId());
+                }
+            }
+            
+            if (ingredientsAdded > 0) {
+                recipeRepository.save(recipe);
+            }
+        }
     }
 
     @Transactional
