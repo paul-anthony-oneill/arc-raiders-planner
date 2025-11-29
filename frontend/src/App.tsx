@@ -240,7 +240,7 @@ function App() {
                 aria-label="Toggle Navigation"
                 aria-expanded={isSidebarOpen}
             >
-                ☰
+                {isSidebarOpen ? '✕' : '☰'}
             </button>
 
             {/* Sidebar (Left) */}
