@@ -89,7 +89,7 @@ const EnemyIndex: React.FC<EnemyIndexProps> = ({
                 key={enemyType}
                 role="button"
                 tabIndex={0}
-                className="enemy-card"
+                className="enemy-card outline-none focus:ring-2 focus:ring-retro-orange"
                 onClick={() => onEnemyTypeSelected(enemyType)}
                 onKeyDown={(e) => handleKeyDown(e, enemyType)}
                 style={{
@@ -104,7 +104,6 @@ const EnemyIndex: React.FC<EnemyIndexProps> = ({
                     ? "#e3f2fd"
                     : "white",
                   transition: "background-color 0.2s",
-                  outline: "none",
                 }}
               >
                 <div

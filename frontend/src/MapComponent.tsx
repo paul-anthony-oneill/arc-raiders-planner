@@ -120,10 +120,13 @@ const MapComponent: React.FC<MapProps> = ({
     // Determine if we should show danger zones
     const showDangerZones = routingProfile === 'AVOID_PVP' || routingProfile === 'SAFE_EXFIL'
 
+    // Type for areas with pre-parsed coordinates
+    type ParsedArea = Area & { parsedCoordinates: L.LatLngExpression[] | null };
+
     // Pre-parse all area coordinates once (eliminates JSON.parse in render loop)
-    const parsedAreas = useMemo(() => {
+    const parsedAreas = useMemo<ParsedArea[]>(() => {
         return areas.map(area => {
-            let parsedCoordinates = null;
+            let parsedCoordinates: L.LatLngExpression[] | null = null;
             if (area.coordinates) {
                 try {
                     parsedCoordinates = JSON.parse(area.coordinates);

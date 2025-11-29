@@ -224,7 +224,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={() => onRemoveFromLoadout(idx)}
                 aria-label={`Remove ${item.name} from loadout`}
-                className="text-retro-red hover:text-retro-orange px-2 transition-opacity focus:opacity-100"
+                className="text-retro-red hover:text-retro-orange px-2"
               >
                 <span aria-hidden="true">✕</span>
               </button>
@@ -241,7 +241,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={() => onRemoveEnemyType(idx)}
                 aria-label={`Remove ${enemyType} from targets`}
-                className="text-retro-red hover:text-retro-orange px-2 transition-opacity focus:opacity-100"
+                className="text-retro-red hover:text-retro-orange px-2"
               >
                 <span aria-hidden="true">✕</span>
               </button>
