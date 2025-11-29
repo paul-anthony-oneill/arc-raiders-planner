@@ -34,24 +34,24 @@ const DataHUD: React.FC<DataHUDProps> = ({
   const currentTitle = hoveredProfile ? "PREVIEWING MODE" : "ACTIVE MODE";
 
   return (
-    <footer className="h-32 border-t-2 border-retro-sand/20 bg-retro-dark/95 relative overflow-hidden grid grid-cols-3 gap-4 p-4 z-30">
+    <footer className="min-h-[8rem] md:h-32 border-t-2 border-retro-sand/20 bg-retro-dark/95 relative overflow-hidden grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 p-4 z-30">
       <div className="absolute inset-0 crt-overlay pointer-events-none"></div>
 
       {/* Col 1: Sector Analysis (Standard) */}
-      <div className="border-r border-retro-sand/10 pr-4 flex flex-col justify-center">
+      <div className="md:border-r border-retro-sand/10 md:pr-4 flex flex-col justify-center">
         <h4 className="text-xs text-retro-orange uppercase tracking-widest mb-1">
           Sector Analysis
         </h4>
-        <div className="text-xl font-display text-retro-sand text-glow">
+        <div className="text-xl md:text-3xl font-display text-retro-sand text-glow">
           {stats?.sectorName || "AWAITING DATA..."}
         </div>
-        <div className="text-sm text-retro-sand-dim font-mono">
+        <p className="hidden md:block text-sm text-retro-sand-dim font-mono">
           ENV: {stats?.environment || "---"}
-        </div>
+        </p>
       </div>
 
       {/* Col 2: Mission Parameters (The New Dynamic Area) */}
-      <div className="border-r border-retro-sand/10 px-4 flex flex-col justify-center relative">
+      <div className="md:border-r border-retro-sand/10 px-4 flex flex-col justify-center relative">
         <h4 className="text-xs text-retro-orange uppercase tracking-widest mb-2">
           {currentTitle} // {hoveredProfile || activeProfile}
         </h4>
@@ -61,19 +61,19 @@ const DataHUD: React.FC<DataHUDProps> = ({
           <span className="typing-effect">{currentDescription}</span>
         </div>
 
-        {/* Optional: Keep Loot Probability as a smaller element or hide it when hovering? 
-                    For now, let's replace it with this text because explaining the mode is critical. 
+        {/* Optional: Keep Loot Probability as a smaller element or hide it when hovering?
+                    For now, let's replace it with this text because explaining the mode is critical.
                     Once a route is calculated (stats exist), we could toggle back.
                 */}
       </div>
 
       {/* Col 3: Threat Level */}
-      <div className="pl-4 flex flex-col justify-center">
+      <div className="md:pl-4 flex flex-col justify-center">
         <h4 className="text-xs text-retro-orange uppercase tracking-widest mb-1">
           Threat Level
         </h4>
         <div
-          className={`text-3xl font-display font-bold ${
+          className={`text-xl md:text-3xl font-display font-bold ${
             stats?.threatLevel === "HIGH" || stats?.threatLevel === "EXTREME"
               ? "text-retro-red animate-pulse text-glow"
               : "text-retro-green"
