@@ -38,6 +38,9 @@ function App() {
     const [collectedIngredients, setCollectedIngredients] = useState<Record<number, Record<string, number>>>({})
     const [itemContextMap, setItemContextMap] = useState<Record<string, string[]>>({})
 
+    // Mobile Sidebar State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
     useEffect(() => {
         recipeApi.getAllRecipes().then(setRecipes).catch(console.error)
         // Load from localStorage
@@ -230,8 +233,22 @@ function App() {
             {/* Global CRT Overlay */}
             <div className="absolute inset-0 crt-overlay pointer-events-none z-50"></div>
 
+            {/* Mobile Sidebar Toggle */}
+            <button
+                className="md:hidden fixed top-4 left-4 z-50 p-2 bg-retro-dark border border-retro-sand/20 text-retro-sand"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                aria-label="Toggle Navigation"
+                aria-expanded={isSidebarOpen}
+            >
+                ☰
+            </button>
+
             {/* Sidebar (Left) */}
-            <aside className="w-80 flex-shrink-0 h-full z-40">
+            <aside className={`
+                fixed md:relative z-40 h-full w-80 bg-retro-dark border-r border-retro-sand/10
+                transition-transform duration-300 ease-in-out
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+            `}>
                 <Sidebar
                     loadout={loadout}
                     onAddToLoadout={handleAddToLoadout}
@@ -255,6 +272,15 @@ function App() {
                     onIngredientUpdate={handleIngredientUpdate}
                 />
             </aside>
+
+            {/* Mobile Backdrop Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="md:hidden fixed inset-0 bg-black/50 z-30"
+                    onClick={() => setIsSidebarOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
 
             {/* Main Content (Right) */}
             <main className="flex-1 flex flex-col h-full relative">
