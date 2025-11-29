@@ -50,6 +50,13 @@ const EnemyIndex: React.FC<EnemyIndexProps> = ({
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, type: EnemyType) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onEnemyTypeSelected(type);
+    }
+  };
+
   return (
     <div
       className="enemy-index-container"
@@ -80,8 +87,11 @@ const EnemyIndex: React.FC<EnemyIndexProps> = ({
           ? enemyTypes.map((enemyType) => (
               <div
                 key={enemyType}
-                className="enemy-card"
+                role="button"
+                tabIndex={0}
+                className="enemy-card outline-none focus:ring-2 focus:ring-retro-orange"
                 onClick={() => onEnemyTypeSelected(enemyType)}
+                onKeyDown={(e) => handleKeyDown(e, enemyType)}
                 style={{
                   border: "1px solid #eee",
                   padding: "15px",

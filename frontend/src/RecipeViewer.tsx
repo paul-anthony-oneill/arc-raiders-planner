@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { RecipeType } from './types';
 import type { Recipe } from './types';
 import { recipeApi } from './api/recipeApi';
@@ -39,14 +39,25 @@ const RecipeViewer: React.FC<RecipeViewerProps> = ({ onExit }) => {
         setExpandedRecipes(newSet);
     };
 
-    // Filter recipes by search term
-    const filteredRecipes = recipes.filter(r =>
-        r.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleAccordionKeyDown = (e: React.KeyboardEvent, recipeId: number) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleExpanded(recipeId);
+        }
+    };
 
-    // Group by type
-    const craftingRecipes = filteredRecipes.filter(r => r.type === RecipeType.CRAFTING);
-    const workbenchRecipes = filteredRecipes.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE);
+    // Filter recipes by search term and group by type (memoized to prevent triple array iteration)
+    const { filteredRecipes, craftingRecipes, workbenchRecipes } = useMemo(() => {
+        const filtered = recipes.filter(r =>
+            r.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        return {
+            filteredRecipes: filtered,
+            craftingRecipes: filtered.filter(r => r.type === RecipeType.CRAFTING),
+            workbenchRecipes: filtered.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE)
+        };
+    }, [recipes, searchTerm]);
 
     const RecipeCard = ({ recipe }: { recipe: Recipe }) => {
         const isExpanded = expandedRecipes.has(recipe.id!);
@@ -55,8 +66,12 @@ const RecipeViewer: React.FC<RecipeViewerProps> = ({ onExit }) => {
             <div className="border border-retro-sand/20 bg-retro-black/40 hover:border-retro-orange/50 transition-colors">
                 {/* Recipe Header - Always Visible */}
                 <div
-                    className="p-3 cursor-pointer flex justify-between items-center"
+                    role="button"
+                    tabIndex={0}
+                    className="p-3 cursor-pointer outline-none focus:ring-2 focus:ring-retro-orange flex justify-between items-center"
                     onClick={() => toggleExpanded(recipe.id!)}
+                    onKeyDown={(e) => handleAccordionKeyDown(e, recipe.id!)}
+                    aria-expanded={isExpanded}
                 >
                     <div className="flex-1">
                         <div className="font-bold text-retro-orange">{recipe.name}</div>
@@ -110,7 +125,9 @@ const RecipeViewer: React.FC<RecipeViewerProps> = ({ onExit }) => {
 
             {/* SEARCH BAR */}
             <div className="p-4 bg-retro-black/30 border-b border-retro-sand/20">
+                <label htmlFor="recipe-search" className="sr-only">Search recipes</label>
                 <input
+                    id="recipe-search"
                     type="text"
                     placeholder="🔍 Search recipes by name..."
                     className="w-full bg-retro-black border border-retro-sand/20 p-3 text-retro-sand focus:border-retro-orange outline-none"

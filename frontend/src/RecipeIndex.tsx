@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { RecipeType } from "./types";
 import type { Recipe } from "./types";
 
@@ -36,9 +36,18 @@ const RecipeIndex: React.FC<RecipeIndexProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, recipeId: number) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onToggleRecipe(recipeId);
+    }
+  };
+
   // Group by type
-  const craftingRecipes = recipes.filter(r => r.type === RecipeType.CRAFTING);
-  const upgrades = recipes.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE);
+  const { craftingRecipes, upgrades } = useMemo(() => ({
+    craftingRecipes: recipes.filter(r => r.type === RecipeType.CRAFTING),
+    upgrades: recipes.filter(r => r.type === RecipeType.WORKBENCH_UPGRADE)
+  }), [recipes]);
 
   const renderList = (list: Recipe[], title: string) => (
     <div className="mb-4">
@@ -51,9 +60,12 @@ const RecipeIndex: React.FC<RecipeIndexProps> = ({
           return (
             <div
               key={recipe.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onToggleRecipe(recipe.id!)}
+              onKeyDown={(e) => handleKeyDown(e, recipe.id!)}
               className={`
-                p-2 border text-sm cursor-pointer transition-all group relative
+                p-2 border text-sm cursor-pointer outline-none focus:ring-2 focus:ring-retro-orange transition-all group relative
                 ${getStatusColor(status)}
               `}
             >

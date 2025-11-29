@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { RoutingProfile } from "./types";
-import type { Area, Item, PlannerResponse } from "./types";
+import type { Item, PlannerResponse } from "./types";
+import type { MapDataResponse } from "./types/stats";
 import MapComponent from "./MapComponent";
 
 const API_PLANNER_URL = "/api/planner";
@@ -14,7 +15,7 @@ interface PlannerProps {
 
 const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
   const [recommendations, setRecommendations] = useState<PlannerResponse[]>([]);
-  const [mapData, setMapData] = useState<any | null>(null);
+  const [mapData, setMapData] = useState<MapDataResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,7 +91,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
           const mapUrl = `${API_MAP_DATA_URL}/${encodeURIComponent(recommendedMapName)}/data`;
 
           const mapResponse = await fetch(mapUrl);
-          const mapJson: { areas: Area[]; name: string } =
+          const mapJson: MapDataResponse =
             await mapResponse.json();
           setMapData(mapJson);
         }

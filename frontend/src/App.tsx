@@ -1,27 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from './Sidebar'
 import DataHUD from './DataHUD'
 import MapComponent from './MapComponent'
 import MapEditor from './MapEditor'
 import RecipeViewer from './RecipeViewer'
+import { Toast } from './components/Toast'
+import { useToast } from './hooks/useToast'
 import { RoutingProfile } from './types'
-import type { Item, EnemyType, Area, PlannerResponse, PlannerRequest, Recipe } from './types'
+import type { Item, EnemyType, PlannerResponse, PlannerRequest, Recipe } from './types'
+import type { RouteStats, MapDataResponse } from './types/stats'
 import { recipeApi } from './api/recipeApi'
 import './App.css'
 
 const API_PLAN_URL = '/api/items/plan'
 
 function App() {
+    // Toast notifications
+    const { toasts, showToast, hideToast } = useToast();
+
     // State
     const [loadout, setLoadout] = useState<Item[]>([])
     const [selectedEnemyTypes, setSelectedEnemyTypes] = useState<EnemyType[]>([])
     const [isCalculating, setIsCalculating] = useState(false)
-    const [mapData, setMapData] = useState<{
-        areas: Area[]
-        name: string
-    } | null>(null)
+    const [mapData, setMapData] = useState<MapDataResponse | null>(null)
     const [activeRoute, setActiveRoute] = useState<PlannerResponse | null>(null) // Store route separately
-    const [stats, setStats] = useState<any | null>(null)
+    const [stats, setStats] = useState<RouteStats | null>(null)
     const [activeEditor, setActiveEditor] = useState<"NONE" | "MAP" | "RECIPE">("NONE")
     const [accessibilityMode, setAccessibilityMode] = useState(false)
 
@@ -34,6 +37,13 @@ function App() {
     const [recipeSelection, setRecipeSelection] = useState<Record<number, "PRIORITY" | "ONGOING" | undefined>>({})
     const [collectedIngredients, setCollectedIngredients] = useState<Record<number, Record<string, number>>>({})
     const [itemContextMap, setItemContextMap] = useState<Record<string, string[]>>({})
+
+    // Mobile Sidebar State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+    const toggleSidebar = useCallback(() => {
+        setIsSidebarOpen(prev => !prev);
+    }, []);
 
     useEffect(() => {
         recipeApi.getAllRecipes().then(setRecipes).catch(console.error)
@@ -53,15 +63,15 @@ function App() {
     }, [collectedIngredients])
 
     // Handlers
-    const handleToggleRecipe = (recipeId: number) => {
+    const handleToggleRecipe = useCallback((recipeId: number) => {
         setRecipeSelection(prev => {
             const current = prev[recipeId];
             const next = current === undefined ? "PRIORITY" : current === "PRIORITY" ? "ONGOING" : undefined;
             return { ...prev, [recipeId]: next };
         });
-    }
+    }, []);
 
-    const handleIngredientUpdate = (recipeId: number, ingredientName: string, delta: number) => {
+    const handleIngredientUpdate = useCallback((recipeId: number, ingredientName: string, delta: number) => {
         setCollectedIngredients(prev => {
             const recipeCollected = prev[recipeId] || {};
             const currentCount = recipeCollected[ingredientName] || 0;
@@ -74,31 +84,39 @@ function App() {
                 }
             };
         });
-    }
+    }, []);
 
-    const handleAddToLoadout = (item: Item) => {
-        if (loadout.length < 5) {
-            setLoadout([...loadout, item])
-        }
-    }
+    const handleAddToLoadout = useCallback((item: Item) => {
+        setLoadout(prev => {
+            if (prev.length < 5) return [...prev, item];
+            return prev;
+        });
+    }, []);
 
-    const handleRemoveFromLoadout = (index: number) => {
-        const newLoadout = [...loadout]
-        newLoadout.splice(index, 1)
-        setLoadout(newLoadout)
-    }
+    const handleRemoveFromLoadout = useCallback((index: number) => {
+        setLoadout(prev => {
+            const updated = [...prev];
+            updated.splice(index, 1);
+            return updated;
+        });
+    }, []);
 
-    const handleAddEnemyType = (enemyType: EnemyType) => {
-        if (selectedEnemyTypes.length < 5 && !selectedEnemyTypes.includes(enemyType)) {
-            setSelectedEnemyTypes([...selectedEnemyTypes, enemyType])
-        }
-    }
+    const handleAddEnemyType = useCallback((enemyType: EnemyType) => {
+        setSelectedEnemyTypes(prev => {
+            if (prev.length < 5 && !prev.includes(enemyType)) {
+                return [...prev, enemyType];
+            }
+            return prev;
+        });
+    }, []);
 
-    const handleRemoveEnemyType = (index: number) => {
-        const newEnemyTypes = [...selectedEnemyTypes]
-        newEnemyTypes.splice(index, 1)
-        setSelectedEnemyTypes(newEnemyTypes)
-    }
+    const handleRemoveEnemyType = useCallback((index: number) => {
+        setSelectedEnemyTypes(prev => {
+            const updated = [...prev];
+            updated.splice(index, 1);
+            return updated;
+        });
+    }, []);
 
     const toggleAccessibility = () => {
         setAccessibilityMode(!accessibilityMode)
@@ -182,7 +200,7 @@ function App() {
                 if (!mapResponse.ok) {
                     throw new Error(`Failed to fetch map data: ${mapResponse.status}`)
                 }
-                const mapJson: { areas: Area[]; name: string } = await mapResponse.json()
+                const mapJson: MapDataResponse = await mapResponse.json()
                 setMapData(mapJson)
 
                 // 5. Generate Stats
@@ -196,11 +214,11 @@ function App() {
                     threatLevel: bestPlan.score < 0 ? 'EXTREME' : 'MEDIUM',
                 })
             } else {
-                alert('No viable route found for this objective.')
+                showToast('No viable route found. Try adjusting your loadout or enemies.', 'error');
             }
         } catch (error) {
             console.error('Calculation failed:', error)
-            alert('Failed to calculate route. System Offline.')
+            showToast(`Failed to calculate route: ${error instanceof Error ? error.message : 'System Offline'}`, 'error');
         } finally {
             setIsCalculating(false)
         }
@@ -208,7 +226,7 @@ function App() {
 
     // Editor Mode
     if (activeEditor === "MAP") {
-        return <MapEditor onExit={() => setActiveEditor("NONE")} />
+        return <MapEditor onExit={() => setActiveEditor("NONE")} showToast={showToast} />
     }
     if (activeEditor === "RECIPE") {
         return <RecipeViewer onExit={() => setActiveEditor("NONE")} />
@@ -219,8 +237,22 @@ function App() {
             {/* Global CRT Overlay */}
             <div className="absolute inset-0 crt-overlay pointer-events-none z-50"></div>
 
+            {/* Mobile Sidebar Toggle */}
+            <button
+                className="md:hidden fixed top-4 left-4 z-50 p-2 bg-retro-dark border border-retro-sand/20 text-retro-sand"
+                onClick={toggleSidebar}
+                aria-label="Toggle Navigation"
+                aria-expanded={isSidebarOpen}
+            >
+                {isSidebarOpen ? '✕' : '☰'}
+            </button>
+
             {/* Sidebar (Left) */}
-            <div className="w-80 flex-shrink-0 h-full z-40">
+            <aside className={`
+                fixed md:relative z-40 h-full w-80 bg-retro-dark border-r border-retro-sand/10
+                transition-transform duration-300 ease-in-out
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+            `}>
                 <Sidebar
                     loadout={loadout}
                     onAddToLoadout={handleAddToLoadout}
@@ -243,10 +275,19 @@ function App() {
                     collectedIngredients={collectedIngredients}
                     onIngredientUpdate={handleIngredientUpdate}
                 />
-            </div>
+            </aside>
+
+            {/* Mobile Backdrop Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="md:hidden fixed inset-0 bg-black/50 z-30"
+                    onClick={() => setIsSidebarOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
 
             {/* Main Content (Right) */}
-            <div className="flex-1 flex flex-col h-full relative">
+            <main className="flex-1 flex flex-col h-full relative">
                 {/* Top Bar / Header */}
                 <header className="h-12 border-b border-retro-sand/20 bg-retro-dark flex items-center justify-between px-4 z-30">
                     <h1 className="text-retro-sand font-display text-lg tracking-widest">
@@ -303,6 +344,23 @@ function App() {
                 <div className="h-32 flex-shrink-0 z-40">
                     <DataHUD stats={stats} activeProfile={routingProfile} hoveredProfile={null} />
                 </div>
+            </main>
+
+            {/* Toast Notifications */}
+            <div
+                role="region"
+                aria-label="Notifications"
+                aria-live="polite"
+                className="fixed top-20 right-4 z-50 flex flex-col gap-2"
+            >
+                {toasts.map(toast => (
+                    <Toast
+                        key={toast.id}
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => hideToast(toast.id)}
+                    />
+                ))}
             </div>
         </div>
     )
