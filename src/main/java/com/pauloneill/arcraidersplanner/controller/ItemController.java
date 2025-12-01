@@ -101,9 +101,10 @@ public class ItemController {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of(itemName),
                 null,
+                java.util.Collections.emptyList(), // targetRecipeIds
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
-                java.util.Collections.emptyList() // Added ongoingItemNames
+                java.util.Collections.emptyList() // ongoingItemNames
         );
         return plannerService.generateRoute(request);
     }

@@ -3,6 +3,7 @@ import { RoutingProfile } from "./types";
 import type { Item, PlannerResponse } from "./types";
 import type { MapDataResponse } from "./types/stats";
 import MapComponent from "./MapComponent";
+import { RecipeSelector } from "./RecipeSelector";
 
 const API_PLANNER_URL = "/api/planner";
 const API_MAP_DATA_URL = "/api/maps";
@@ -28,6 +29,9 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
   // New state for enemy targeting
   const [availableEnemies, setAvailableEnemies] = useState<string[]>([]);
   const [targetEnemies, setTargetEnemies] = useState<string[]>([]);
+
+  // New state for recipe targeting (crafting + workbench upgrades)
+  const [targetRecipes, setTargetRecipes] = useState<string[]>([]);
 
   // Fetch available enemy types on mount
   useEffect(() => {
@@ -60,9 +64,9 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
       setError(null);
       setMapData(null);
 
-      if (!selectedItem.lootType && targetEnemies.length === 0) {
+      if (!selectedItem.lootType && targetEnemies.length === 0 && targetRecipes.length === 0) {
         setError(
-          `${selectedItem.name} is only obtained via crafting or enemy drops, and no enemy target is selected.`,
+          `${selectedItem.name} is only obtained via crafting or enemy drops, and no target is selected.`,
         );
         setLoading(false);
         setRecommendations([]);
@@ -77,8 +81,10 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
           body: JSON.stringify({
             targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
             targetEnemyTypes: targetEnemies,
+            targetRecipeIds: targetRecipes,
             hasRaiderKey,
             routingProfile,
+            ongoingItemNames: [],
           }),
         });
 
@@ -106,7 +112,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
     };
 
     fetchPlannerData();
-  }, [selectedItem, hasRaiderKey, routingProfile, targetEnemies]);
+  }, [selectedItem, hasRaiderKey, routingProfile, targetEnemies, targetRecipes]);
 
   // Profile descriptions for help text
   const profileDescriptions: Record<RoutingProfile, string> = {
@@ -297,6 +303,13 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
             Select high-value enemies to include in route planning. The route
             will be scored based on proximity to these targets.
           </p>
+        </div>
+
+        <div style={{ marginBottom: "15px" }}>
+          <RecipeSelector
+            selectedRecipeIds={targetRecipes}
+            onSelectionChange={setTargetRecipes}
+          />
         </div>
 
         <div>

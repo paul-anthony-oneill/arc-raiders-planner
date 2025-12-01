@@ -74,6 +74,7 @@ export type RoutingProfile =
 export interface PlannerRequest {
   targetItemNames: string[];
   targetEnemyTypes: string[]; // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
+  targetRecipeIds: string[]; // Recipe IDs for crafting/upgrades (e.g., ["hideout_weapon_bench_lvl2", "item_123"])
   hasRaiderKey: boolean;
   routingProfile: RoutingProfile;
   ongoingItemNames?: string[];
@@ -95,6 +96,7 @@ export interface RecipeIngredient {
 
 export interface Recipe {
   id?: number;
+  metaforgeItemId: string;  // Used for planner targeting
   name: string;
   description: string;
   type: RecipeType;

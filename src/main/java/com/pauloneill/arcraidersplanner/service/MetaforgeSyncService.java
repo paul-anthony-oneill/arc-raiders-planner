@@ -178,10 +178,23 @@ public class MetaforgeSyncService {
         try {
             Resource[] resources = resolver.getResources("classpath:data/hideout/*.json");
             log.info("Found {} hideout definition files", resources.length);
-            
+
             for (Resource resource : resources) {
                 try {
                     HideoutUpgradeDto dto = objectMapper.readValue(resource.getInputStream(), HideoutUpgradeDto.class);
+
+                    // FILTER: Skip non-targetable workbenches
+                    if (dto.maxLevel() == 0 || dto.levels().isEmpty()) {
+                        log.info("Skipping {} - no upgrade levels", dto.id());
+                        continue;
+                    }
+
+                    // FILTER: Skip if all levels use only coins (no item requirements)
+                    if (hasOnlyCoinRequirements(dto)) {
+                        log.info("Skipping {} - coin-based only", dto.id());
+                        continue;
+                    }
+
                     processHideoutUpgrade(dto);
                 } catch (Exception e) {
                     log.error("Failed to parse hideout file: {}", resource.getFilename(), e);
@@ -191,6 +204,11 @@ public class MetaforgeSyncService {
             log.error("Failed to load hideout resources", e);
         }
         log.info("--- WORKBENCH UPGRADE SYNC COMPLETE ---");
+    }
+
+    private boolean hasOnlyCoinRequirements(HideoutUpgradeDto dto) {
+        return dto.levels().stream()
+                .allMatch(level -> level.requirementItemIds() == null || level.requirementItemIds().isEmpty());
     }
 
     private void processHideoutUpgrade(HideoutUpgradeDto dto) {

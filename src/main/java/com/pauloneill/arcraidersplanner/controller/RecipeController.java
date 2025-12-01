@@ -35,7 +35,10 @@ public class RecipeController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    @Operation(summary = "Get all recipes")
+    @Operation(summary = "Get all recipes (crafting + workbench upgrades)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of all recipes retrieved")
+    })
     public List<RecipeDto> getAllRecipes() {
         return recipeRepository.findAll().stream()
                 .map(this::convertToDto)
@@ -98,6 +101,7 @@ public class RecipeController {
 
         return new RecipeDto(
                 recipe.getId(),
+                recipe.getMetaforgeItemId(),
                 recipe.getName(),
                 recipe.getDescription(),
                 recipe.getType(),

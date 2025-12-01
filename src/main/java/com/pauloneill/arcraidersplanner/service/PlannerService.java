@@ -11,6 +11,7 @@ import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.repository.RecipeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -25,14 +26,16 @@ public class PlannerService {
     private final ItemRepository itemRepository;
     private final GameMapRepository gameMapRepository;
     private final MapMarkerRepository mapMarkerRepository;
+    private final RecipeRepository recipeRepository;
     private final EnemyService enemyService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PlannerService(ItemRepository itemRepository, GameMapRepository gameMapRepository,
-            MapMarkerRepository mapMarkerRepository, EnemyService enemyService) {
+            MapMarkerRepository mapMarkerRepository, RecipeRepository recipeRepository, EnemyService enemyService) {
         this.itemRepository = itemRepository;
         this.gameMapRepository = gameMapRepository;
         this.mapMarkerRepository = mapMarkerRepository;
+        this.recipeRepository = recipeRepository;
         this.enemyService = enemyService;
     }
 
@@ -40,10 +43,23 @@ public class PlannerService {
         // Step 1: Resolve target item information (loot types and dropped-by enemies)
         TargetItemInfo targetItemInfo = resolveTargetItemInformation(request.targetItemNames());
 
-        Set<String> requiredLootTypes = targetItemInfo.targetLootTypes();
+        // Step 1b: Resolve recipe requirements (crafting + workbench upgrades)
+        RecipeTargetInfo recipeInfo = resolveTargetRecipes(request.targetRecipeIds());
+
+        Set<String> requiredLootTypes = new HashSet<>(targetItemInfo.targetLootTypes());
         Set<String> targetDroppedByEnemies = targetItemInfo.targetDroppedByEnemies();
         Map<String, List<String>> lootTypeToItemNames = targetItemInfo.lootTypeToItemNames();
         Map<String, List<String>> enemyTypeToItemNames = targetItemInfo.enemyTypeToItemNames();
+
+        // Add loot types for recipe ingredients (crafting + workbench upgrades)
+        for (String ingredientName : recipeInfo.allIngredientNames()) {
+            Optional<Item> ingredient = itemRepository.findByName(ingredientName);
+            ingredient.ifPresent(item -> {
+                if (item.getLootType() != null) {
+                    requiredLootTypes.add(item.getLootType().getName());
+                }
+            });
+        }
 
         // Step 2: Combine explicitly requested enemy types with those derived from item drops
         Set<String> allTargetEnemyTypes = new HashSet<>();
@@ -58,9 +74,9 @@ public class PlannerService {
             allEnemySpawns = enemyService.getSpawnsByTypes(new ArrayList<>(allTargetEnemyTypes));
         }
 
-        // Require either items OR enemies to be specified
-        if (requiredLootTypes.isEmpty() && allTargetEnemyTypes.isEmpty()) {
-            log.warn("No loot types or enemy types specified for route generation.");
+        // Require either items OR enemies OR recipes to be specified
+        if (requiredLootTypes.isEmpty() && allTargetEnemyTypes.isEmpty() && recipeInfo.recipeIds().isEmpty()) {
+            log.warn("No loot types, enemy types, or recipes specified for route generation.");
             return Collections.emptyList();
         }
 
@@ -116,7 +132,7 @@ public class PlannerService {
                         map.getName());
             }
 
-            // 5. Calculate Score based on Profile (including enemy proximity)
+            // 5. Calculate Score based on Profile (including enemy proximity and recipe ingredients)
             RouteResult route = calculateRouteAndScore(
                     viablePoints, // Use combined list of routable points
                     relevantLootAreas, // For score calculation for areas
@@ -126,7 +142,8 @@ public class PlannerService {
                     extractionMarkers,
                     enemySpawnsOnMap, // All enemies for proximity scoring
                     map,
-                    enemyTypeToItemNames);
+                    enemyTypeToItemNames,
+                    recipeInfo);
 
             // Resolve Ongoing Items Map: LootType Name -> List of Item Names
             Map<String, List<String>> ongoingLootMap = resolveOngoingItems(request.ongoingItemNames());
@@ -191,6 +208,53 @@ public class PlannerService {
         return new TargetItemInfo(targetLootTypes, targetDroppedByEnemies, exclusiveDroppedByEnemies, lootTypeToItemNames, enemyTypeToItemNames);
     }
 
+    private record RecipeTargetInfo(
+            Set<String> recipeIds,                           // Requested recipe IDs
+            Map<String, Set<String>> recipeToIngredientNames, // ID → ingredient names
+            Map<String, String> recipeToDisplayName,          // ID → "Gunsmith Level 2" or "Battery"
+            Set<String> allIngredientNames                     // Flattened set for resolution
+    ) {}
+
+    private RecipeTargetInfo resolveTargetRecipes(List<String> recipeIds) {
+        if (recipeIds == null || recipeIds.isEmpty()) {
+            return new RecipeTargetInfo(
+                    Collections.emptySet(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptySet()
+            );
+        }
+
+        Map<String, Set<String>> recipeToIngredients = new HashMap<>();
+        Map<String, String> recipeToDisplayName = new HashMap<>();
+        Set<String> allIngredients = new HashSet<>();
+
+        for (String recipeId : recipeIds) {
+            Optional<Recipe> recipe = recipeRepository.findByMetaforgeItemId(recipeId);
+
+            if (recipe.isEmpty()) {
+                log.warn("Recipe not found: {}", recipeId);
+                continue;
+            }
+
+            Recipe targetRecipe = recipe.get();
+            Set<String> ingredients = targetRecipe.getIngredients().stream()
+                    .map(ing -> ing.getItem().getName())
+                    .collect(Collectors.toSet());
+
+            recipeToIngredients.put(recipeId, ingredients);
+            recipeToDisplayName.put(recipeId, targetRecipe.getName());
+            allIngredients.addAll(ingredients);
+        }
+
+        return new RecipeTargetInfo(
+                new HashSet<>(recipeIds),
+                recipeToIngredients,
+                recipeToDisplayName,
+                allIngredients
+        );
+    }
+
     private record RouteResult(double score, List<? extends RoutablePoint> path, String extractionPoint, Double extractionLat,
             Double extractionLng, List<EnemySpawnDto> enemySpawns) {
     }
@@ -204,7 +268,8 @@ public class PlannerService {
             List<MapMarker> extractionMarkers,
             List<MapMarker> allTargetEnemiesOnMap, // All enemies for proximity scoring
             GameMap map,
-            Map<String, List<String>> enemyTypeToItemNames) {
+            Map<String, List<String>> enemyTypeToItemNames,
+            RecipeTargetInfo recipeInfo) {
 
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
@@ -221,6 +286,17 @@ public class PlannerService {
             if (point instanceof Area area) {
                 long matchCount = area.getLootTypes().stream().filter(lt -> targets.contains(lt.getName())).count();
                 score = (matchCount > 1) ? (matchCount * 100) : 10;
+
+                // Recipe Ingredient Bonus: Boost areas containing recipe ingredients
+                for (String ingredientName : recipeInfo.allIngredientNames()) {
+                    Optional<Item> ingredient = itemRepository.findByName(ingredientName);
+                    if (ingredient.isPresent() && ingredient.get().getLootType() != null) {
+                        String ingredientLootType = ingredient.get().getLootType().getName();
+                        if (area.getLootTypes().stream().anyMatch(lt -> lt.getName().equals(ingredientLootType))) {
+                            score += 50.0;  // Ingredient found bonus
+                        }
+                    }
+                }
 
                 // PvP Mode Adjustment: Boost areas near map edge (distance from 0,0)
                 if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP

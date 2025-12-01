@@ -171,6 +171,7 @@ function App() {
             const requestBody: PlannerRequest = {
                 targetItemNames: [...loadout.map((i) => i.name), ...targetIngredients],
                 targetEnemyTypes: selectedEnemyTypes,
+                targetRecipeIds: [],
                 hasRaiderKey: hasRaiderKey,
                 routingProfile: routingProfile,
                 ongoingItemNames: ongoingIngredients,

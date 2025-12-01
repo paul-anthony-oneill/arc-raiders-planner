@@ -5,6 +5,7 @@ import java.util.List;
 public record PlannerRequestDto(
         List<String> targetItemNames,
         List<String> targetEnemyTypes,  // Enemy type names (e.g., "sentinel", "guardian")
+        List<String> targetRecipeIds,  // Recipe IDs for crafting/upgrades (e.g., "hideout_weapon_bench_lvl2", "item_123")
         boolean hasRaiderKey,
         RoutingProfile routingProfile,
         List<String> ongoingItemNames // New field for items tracked as "ongoing"
