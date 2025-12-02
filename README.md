@@ -50,9 +50,10 @@ This project features a custom data synchronization service, demonstrating integ
 
 ### 2. Domain Model & Core Logic
 
-- **Core Entities:** `Item`, `GameMap`, `Area` (Loot Zone), and `LootType`.
+- **Core Entities:** `Item`, `GameMap`, `Area` (Loot Zone), `LootType`, `ContainerType`, and `MarkerGroup`.
 - **Relationship Showcase:** An `Area` (Loot Zone) maintains a **Many-to-Many relationship** with multiple `LootType` categories (e.g., a single zone can spawn both 'Industrial' and 'Mechanical' loot).
 - **Planner Algorithm (JPQL):** The core logic is executed via a single, highly optimized **JPQL query** that performs a `JOIN` across three tables and aggregates the results using a `COUNT` and `GROUP BY` clause. This returns a prioritized list of maps for any given item type.
+- **Container Grouping (DBSCAN):** Implements a **spatial clustering algorithm** that automatically groups nearby container spawns into consolidated zones, reducing route complexity and improving navigation clarity.
 
 ---
 
@@ -64,10 +65,12 @@ The API provides comprehensive endpoints for raid planning, item search, and ene
 | :------------------------------------------ | :----- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/api/items?search={term}`                  | `GET`  | **Search Index:** Fetches items with partial, case-insensitive search (`LIKE` query).                                                                            |
 | `/api/items/recommendation?itemName={name}` | `GET`  | **Legacy Endpoint:** Basic map recommendation by single item.                                                                                                    |
-| `/api/planner/generate-route`               | `POST` | **Advanced Route Planning:** Accepts items, enemies, and routing profile. Returns optimized routes using **multi-start nearest-neighbor + 2-opt TSP algorithm**. |
+| `/api/planner/generate-route`               | `POST` | **Advanced Route Planning:** Accepts items, enemies, containers, and routing profile. Returns optimized routes using **multi-start nearest-neighbor + 2-opt TSP algorithm**. |
 | `/api/enemies?search={term}`                | `GET`  | **Enemy Search:** Searches ARC enemies by name (e.g., "Sentinel", "Guardian").                                                                                   |
 | `/api/enemies/{id}`                         | `GET`  | **Enemy Details:** Fetches specific enemy spawn details by UUID.                                                                                                 |
 | `/api/enemies/types`                        | `GET`  | **Enemy Categories:** Returns distinct enemy type classifications.                                                                                               |
+| `/api/containers`                           | `GET`  | **Container Types:** Lists all container types (Red Lockers, Raider Caches, Weapon Crates, etc.).                                                                |
+| `/api/containers?search={term}`             | `GET`  | **Container Search:** Search for specific container types by name.                                                                                                |
 
 ---
 
@@ -107,13 +110,16 @@ To run the application, you only need **Java 21** and **Docker Desktop** install
 - ✅ **Routing Profiles:** Four specialized modes (PURE_SCAVENGER, EASY_EXFIL, AVOID_PVP, SAFE_EXFIL)
 - ✅ **ARC Enemy Targeting:** Search and target specific enemy spawns with route integration
 - ✅ **Enemy Proximity Scoring:** Routes automatically optimize for passing near target enemies
+- ✅ **Container Targeting:** Target specific container types (Red Lockers, Raider Caches, Weapon Crates, etc.)
+- ✅ **Marker Grouping & Zones:** Automatic clustering of nearby container spawns into consolidated zones using DBSCAN algorithm
+- ✅ **Mixed Targeting:** Combine items, enemies, and containers in a single optimized route
 
 ## Future Improvements
 
-- **Enhanced Map Visualization:** Improve interactive map UI with better route visualization and waypoint display
 - **Quest Integration:** Add quest objectives as route targets (e.g., "The Major's Footlocker" quest)
 - **Crafting Components:** Integrate workbench upgrades and crafting recipe components as plannable targets
-- **Target Prioritization:** Allow users to weight importance of different targets (items vs enemies vs quests)
+- **Target Prioritization:** Allow users to weight importance of different targets (items vs enemies vs containers vs quests)
+- **Advanced Clustering Configuration:** Allow users to customize grouping parameters (distance threshold, minimum cluster size)
 
 ## Stretch Goals & Future Improvements
 
