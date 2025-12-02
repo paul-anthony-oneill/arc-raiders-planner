@@ -15,6 +15,8 @@ public record WaypointDto(
         String type, // "AREA" or "MARKER"
         Set<String> lootTypes, // Only relevant for AREA type
         Integer lootAbundance, // Only relevant for AREA type
+        String containerType,  // Only relevant for MARKER_GROUP type
+        Integer markerCount,   // Only relevant for MARKER_GROUP type
         List<String> ongoingMatchItems,
         List<String> targetMatchItems
 ) {

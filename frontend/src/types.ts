@@ -31,6 +31,29 @@ export interface EnemySpawn {
   droppedItems?: string[]; // New field for items dropped by this enemy type
 }
 
+// Represents a targetable container type (e.g., "Red Locker")
+export interface ContainerType {
+  id: number;
+  name: string;
+  subcategory: string; // e.g., "red-locker"
+  description: string;
+  iconUrl?: string;
+}
+
+// Represents a clustered group of container markers
+export interface MarkerGroup {
+  id: number;
+  name: string;
+  mapId: number;
+  mapName: string;
+  containerType: ContainerType;
+  centerLat: number;
+  centerLng: number;
+  markerCount: number;
+  radius: number;
+  markerIds: string[];
+}
+
 export interface MapRecommendation {
   mapId: number;
   mapName: string;
@@ -75,6 +98,7 @@ export interface PlannerRequest {
   targetItemNames: string[];
   targetEnemyTypes: string[]; // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
   targetRecipeIds: string[]; // Recipe IDs for crafting/upgrades (e.g., ["hideout_weapon_bench_lvl2", "item_123"])
+  targetContainerTypes: string[]; // Container type subcategories (e.g., ["red-locker", "raider-cache"])
   hasRaiderKey: boolean;
   routingProfile: RoutingProfile;
   ongoingItemNames?: string[];

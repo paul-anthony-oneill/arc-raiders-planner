@@ -9,6 +9,7 @@ import com.pauloneill.arcraidersplanner.model.Item;
 import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.ContainerTargetInfo;
 import com.pauloneill.arcraidersplanner.service.TargetResolutionService.RecipeTargetInfo;
 import com.pauloneill.arcraidersplanner.service.TargetResolutionService.TargetItemInfo;
 import org.junit.jupiter.api.BeforeEach;

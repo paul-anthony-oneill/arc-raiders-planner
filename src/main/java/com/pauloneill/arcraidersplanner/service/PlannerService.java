@@ -544,6 +544,8 @@ public class PlannerService {
         String type;
         Set<String> lootTypes = Collections.emptySet();
         Integer lootAbundance = null;
+        String containerType = null;
+        Integer markerCount = null;
         List<String> ongoingMatchItems = Collections.emptyList();
         List<String> targetMatchItems = new ArrayList<>();
 
@@ -574,6 +576,10 @@ public class PlannerService {
                 }
             }
 
+        } else if (point instanceof MarkerGroup group) {
+            type = "MARKER_GROUP";
+            containerType = group.getContainerType().getName();
+            markerCount = group.getMarkerCount();
         } else if (point instanceof MapMarker marker) {
             type = "MARKER";
             // Populate targetMatchItems for markers (enemies)
@@ -594,6 +600,8 @@ public class PlannerService {
                 type,
                 lootTypes,
                 lootAbundance,
+                containerType,
+                markerCount,
                 ongoingMatchItems,
                 targetMatchItems.stream().distinct().sorted().toList()
         );
