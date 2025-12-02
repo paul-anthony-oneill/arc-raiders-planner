@@ -8,6 +8,7 @@ import com.pauloneill.arcraidersplanner.model.Recipe;
 import com.pauloneill.arcraidersplanner.model.RecipeType;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.RecipeRepository;
+import com.pauloneill.arcraidersplanner.service.DtoMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ public class RecipeControllerTest {
 
     @MockBean
     private ItemRepository itemRepository;
+
+    @MockBean
+    private DtoMapper dtoMapper;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -75,6 +79,9 @@ public class RecipeControllerTest {
         // Mock ingredients not strictly necessary for this basic test unless we check response body deeply
         
         when(recipeRepository.save(any(Recipe.class))).thenReturn(savedRecipe);
+        when(dtoMapper.toDto(any(Recipe.class))).thenReturn(
+                new RecipeDto(savedRecipe.getId(), savedRecipe.getMetaforgeItemId(), savedRecipe.getName(), savedRecipe.getDescription(), savedRecipe.getType(), Collections.emptyList())
+        );
 
         mockMvc.perform(post("/api/recipes")
                 .contentType(MediaType.APPLICATION_JSON)

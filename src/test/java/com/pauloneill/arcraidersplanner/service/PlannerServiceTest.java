@@ -6,6 +6,7 @@ import com.pauloneill.arcraidersplanner.dto.WaypointDto;
 import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.ContainerTargetInfo;
 import com.pauloneill.arcraidersplanner.service.TargetResolutionService.RecipeTargetInfo;
 import com.pauloneill.arcraidersplanner.service.TargetResolutionService.TargetItemInfo;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,7 +82,7 @@ class PlannerServiceTest {
         when(gameMapRepository.findAllWithAreas()).thenReturn(List.of(mapA, mapB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, Collections.emptyList(), false, PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                List.of("Copper Wire"), null, Collections.emptyList(), Collections.emptyList(), false, PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList()
         );
 
@@ -120,7 +122,7 @@ class PlannerServiceTest {
         when(gameMapRepository.findAllWithAreas()).thenReturn(List.of(mapA, mapB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, Collections.emptyList(), false, PlannerRequestDto.RoutingProfile.AVOID_PVP,
+                List.of("Copper Wire"), null, Collections.emptyList(), Collections.emptyList(), false, PlannerRequestDto.RoutingProfile.AVOID_PVP,
                 Collections.emptyList()
         );
 
@@ -171,7 +173,7 @@ class PlannerServiceTest {
         when(mapMarkerRepository.findByGameMapId(2L)).thenReturn(List.of(hatchB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, Collections.emptyList(), true, PlannerRequestDto.RoutingProfile.EASY_EXFIL,
+                List.of("Copper Wire"), null, Collections.emptyList(), Collections.emptyList(), true, PlannerRequestDto.RoutingProfile.EASY_EXFIL,
                 Collections.emptyList()
         );
 
@@ -226,7 +228,7 @@ class PlannerServiceTest {
         when(mapMarkerRepository.findByGameMapId(2L)).thenReturn(List.of(hatchB));
 
         PlannerRequestDto request = new PlannerRequestDto(
-                List.of("Copper Wire"), null, Collections.emptyList(), true, PlannerRequestDto.RoutingProfile.SAFE_EXFIL,
+                List.of("Copper Wire"), null, Collections.emptyList(), Collections.emptyList(), true, PlannerRequestDto.RoutingProfile.SAFE_EXFIL,
                 Collections.emptyList()
         );
 
@@ -259,6 +261,9 @@ class PlannerServiceTest {
         when(targetResolutionService.resolveRecipes(anyList())).thenReturn(emptyRecipeInfo);
         // And ingredient resolution (empty)
         when(targetResolutionService.resolveTargetItems(eq(new ArrayList<>()))).thenReturn(new TargetItemInfo(Collections.<String>emptySet(), Collections.<String>emptySet(), Collections.<String>emptySet(), Collections.<String, List<String>>emptyMap(), Collections.<String, List<String>>emptyMap()));
+        
+        // Mock container resolution to empty
+        when(targetResolutionService.resolveTargetContainers(anyList(), eq(null))).thenReturn(new ContainerTargetInfo(Collections.emptyList()));
     }
 
     private Area createArea(Long id, int x, int y, int abundance, Set<LootType> lootTypes) {

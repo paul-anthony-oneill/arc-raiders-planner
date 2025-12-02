@@ -46,7 +46,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
-                null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames
@@ -83,7 +84,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
-                null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 true,
                 PlannerRequestDto.RoutingProfile.EASY_EXFIL,
                 Collections.emptyList() // Added ongoingItemNames
@@ -119,7 +121,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Industrial Parts"),
                 null,
-                null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.AVOID_PVP,
                 Collections.emptyList() // Added ongoingItemNames
@@ -155,7 +158,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Mechanical Components"),
                 null,
-                null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 true,
                 PlannerRequestDto.RoutingProfile.SAFE_EXFIL,
                 Collections.emptyList() // Added ongoingItemNames
@@ -191,7 +195,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Nonexistent Item"),
                 null,
-                null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames
@@ -216,7 +221,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
-                null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames

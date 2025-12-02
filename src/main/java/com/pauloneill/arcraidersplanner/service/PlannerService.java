@@ -55,6 +55,12 @@ public class PlannerService {
         Map<String, List<String>> lootTypeToItemNames = targetItemInfo.lootTypeToItemNames();
         Map<String, List<String>> enemyTypeToItemNames = targetItemInfo.enemyTypeToItemNames();
 
+        // Step 1d: Resolve target container types to marker groups
+        TargetResolutionService.ContainerTargetInfo containerInfo = targetResolutionService.resolveTargetContainers(
+                request.targetContainerTypes(),
+                null // Pass null for mapId here, filtering will happen inside the loop
+        );
+
         // Step 2: Combine explicitly requested enemy types with those derived from item drops
         Set<String> allTargetEnemyTypes = new HashSet<>();
         if (request.targetEnemyTypes() != null) {
@@ -68,9 +74,9 @@ public class PlannerService {
             allEnemySpawns = enemyService.getSpawnsByTypes(new ArrayList<>(allTargetEnemyTypes));
         }
 
-        // Require either items OR enemies OR recipes to be specified
-        if (requiredLootTypes.isEmpty() && allTargetEnemyTypes.isEmpty() && recipeInfo.recipeIds().isEmpty()) {
-            log.warn("No loot types, enemy types, or recipes specified for route generation.");
+        // Require either items OR enemies OR recipes OR containers to be specified
+        if (requiredLootTypes.isEmpty() && allTargetEnemyTypes.isEmpty() && recipeInfo.recipeIds().isEmpty() && containerInfo.markerGroups().isEmpty()) {
+            log.warn("No loot types, enemy types, recipes, or container types specified for route generation.");
             return Collections.emptyList();
         }
 
@@ -94,14 +100,21 @@ public class PlannerService {
                     .filter(marker -> targetItemInfo.exclusiveDroppedByEnemies().contains(marker.getSubcategory()))
                     .toList();
 
-            // Combine relevant areas and exclusive enemy markers into the list of viable points for routing
+            // 3. Identify Target Container Groups for this map
+            List<MarkerGroup> targetContainerGroupsOnMap = containerInfo.markerGroups().stream()
+                    .filter(group -> group.getGameMap().getId().equals(map.getId()))
+                    .toList();
+
+
+            // Combine relevant areas, exclusive enemy markers, and container groups into the list of viable points for routing
             List<RoutablePoint> viablePoints = new ArrayList<>();
             viablePoints.addAll(relevantLootAreas);
             viablePoints.addAll(exclusiveEnemyMarkers);
+            viablePoints.addAll(targetContainerGroupsOnMap);
 
             // Skip map if it has no viable points
             if (viablePoints.isEmpty()) {
-                log.debug("Map {} has no relevant areas or exclusive enemy markers for target items.", map.getName());
+                log.debug("Map {} has no relevant areas, exclusive enemy markers, or target container groups for target items.", map.getName());
                 continue;
             }
 

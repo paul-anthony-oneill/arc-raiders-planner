@@ -95,6 +95,7 @@ class PlannerServiceOngoingItemsTest {
                 List.of("Copper Wire"), // Target: Industrial
                 null, 
                 Collections.emptyList(), // targetRecipeIds
+                Collections.emptyList(), // targetContainerTypes (NEW)
                 false, 
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 List.of("Battery")      // Ongoing: Electronics
@@ -132,6 +133,9 @@ class PlannerServiceOngoingItemsTest {
                 Collections.<String>emptySet(), Collections.<String, Set<String>>emptyMap(), Collections.<String, String>emptyMap(), Collections.<String>emptySet()));
         when(targetResolutionService.resolveTargetItems(eq(new ArrayList<>()))).thenReturn(new TargetItemInfo(
                 Collections.<String>emptySet(), Collections.<String>emptySet(), Collections.<String>emptySet(), Collections.<String, List<String>>emptyMap(), Collections.<String, List<String>>emptyMap()));
+        
+        // Mock container resolution to empty
+        when(targetResolutionService.resolveTargetContainers(anyList(), eq(null))).thenReturn(new TargetResolutionService.ContainerTargetInfo(Collections.emptyList()));
     }
 
     private void mockOngoingItems(String itemName, String lootType) {
