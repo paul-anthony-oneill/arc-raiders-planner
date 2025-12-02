@@ -13,7 +13,7 @@ export interface Item {
   value: number;
   weight: number;
   stackSize: number;
-  lootType: LootType | null;
+  lootType: string | null; // Just the loot type name from backend
 }
 
 // Represents an enemy type for selection (not a specific spawn)

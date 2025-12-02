@@ -7,6 +7,7 @@ import com.pauloneill.arcraidersplanner.model.Recipe;
 import com.pauloneill.arcraidersplanner.model.RecipeIngredient;
 import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.RecipeRepository;
+import com.pauloneill.arcraidersplanner.service.DtoMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -27,10 +28,12 @@ public class RecipeController {
 
     private final RecipeRepository recipeRepository;
     private final ItemRepository itemRepository;
+    private final DtoMapper dtoMapper;
 
-    public RecipeController(RecipeRepository recipeRepository, ItemRepository itemRepository) {
+    public RecipeController(RecipeRepository recipeRepository, ItemRepository itemRepository, DtoMapper dtoMapper) {
         this.recipeRepository = recipeRepository;
         this.itemRepository = itemRepository;
+        this.dtoMapper = dtoMapper;
     }
 
     @GetMapping
@@ -40,9 +43,7 @@ public class RecipeController {
             @ApiResponse(responseCode = "200", description = "List of all recipes retrieved")
     })
     public List<RecipeDto> getAllRecipes() {
-        return recipeRepository.findAll().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        return dtoMapper.toRecipeDtos(recipeRepository.findAll());
     }
 
     @PostMapping
@@ -74,7 +75,7 @@ public class RecipeController {
         }
 
         Recipe savedRecipe = recipeRepository.save(recipe);
-        return new ResponseEntity<>(convertToDto(savedRecipe), HttpStatus.CREATED);
+        return new ResponseEntity<>(dtoMapper.toDto(savedRecipe), HttpStatus.CREATED);
     }
     
     @DeleteMapping("/{id}")
@@ -89,23 +90,5 @@ public class RecipeController {
         }
         recipeRepository.deleteById(id);
         return ResponseEntity.noContent().build();
-    }
-
-    private RecipeDto convertToDto(Recipe recipe) {
-        List<RecipeIngredientDto> ingredients = recipe.getIngredients().stream()
-                .map(ing -> new RecipeIngredientDto(
-                        ing.getItem().getId(),
-                        ing.getItem().getName(),
-                        ing.getQuantity()))
-                .collect(Collectors.toList());
-
-        return new RecipeDto(
-                recipe.getId(),
-                recipe.getMetaforgeItemId(),
-                recipe.getName(),
-                recipe.getDescription(),
-                recipe.getType(),
-                ingredients
-        );
     }
 }

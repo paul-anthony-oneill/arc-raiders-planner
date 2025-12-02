@@ -147,7 +147,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
       <h2>Planning for: {selectedItem.name}</h2>
       <p>
         Required Loot Type:{" "}
-        <strong>{selectedItem.lootType?.name || "N/A"}</strong>
+        <strong>{selectedItem.lootType || "N/A"}</strong>
       </p>
 
       {/* Routing Profile Controls */}

@@ -9,9 +9,9 @@ import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
 import com.pauloneill.arcraidersplanner.dto.WaypointDto;
 import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
-import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
-import com.pauloneill.arcraidersplanner.repository.RecipeRepository;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.RecipeTargetInfo;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.TargetItemInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -23,43 +23,38 @@ import java.util.stream.Collectors;
 @Service
 public class PlannerService {
 
-    private final ItemRepository itemRepository;
     private final GameMapRepository gameMapRepository;
     private final MapMarkerRepository mapMarkerRepository;
-    private final RecipeRepository recipeRepository;
     private final EnemyService enemyService;
+    private final TargetResolutionService targetResolutionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public PlannerService(ItemRepository itemRepository, GameMapRepository gameMapRepository,
-            MapMarkerRepository mapMarkerRepository, RecipeRepository recipeRepository, EnemyService enemyService) {
-        this.itemRepository = itemRepository;
+    public PlannerService(GameMapRepository gameMapRepository,
+                          MapMarkerRepository mapMarkerRepository,
+                          EnemyService enemyService,
+                          TargetResolutionService targetResolutionService) {
         this.gameMapRepository = gameMapRepository;
         this.mapMarkerRepository = mapMarkerRepository;
-        this.recipeRepository = recipeRepository;
         this.enemyService = enemyService;
+        this.targetResolutionService = targetResolutionService;
     }
 
     public List<PlannerResponseDto> generateRoute(PlannerRequestDto request) {
         // Step 1: Resolve target item information (loot types and dropped-by enemies)
-        TargetItemInfo targetItemInfo = resolveTargetItemInformation(request.targetItemNames());
+        TargetItemInfo targetItemInfo = targetResolutionService.resolveTargetItems(request.targetItemNames());
 
         // Step 1b: Resolve recipe requirements (crafting + workbench upgrades)
-        RecipeTargetInfo recipeInfo = resolveTargetRecipes(request.targetRecipeIds());
+        RecipeTargetInfo recipeInfo = targetResolutionService.resolveRecipes(request.targetRecipeIds());
+
+        // Step 1c: Resolve loot types for recipe ingredients
+        TargetItemInfo ingredientInfo = targetResolutionService.resolveTargetItems(new ArrayList<>(recipeInfo.allIngredientNames()));
 
         Set<String> requiredLootTypes = new HashSet<>(targetItemInfo.targetLootTypes());
+        requiredLootTypes.addAll(ingredientInfo.targetLootTypes());
+
         Set<String> targetDroppedByEnemies = targetItemInfo.targetDroppedByEnemies();
         Map<String, List<String>> lootTypeToItemNames = targetItemInfo.lootTypeToItemNames();
         Map<String, List<String>> enemyTypeToItemNames = targetItemInfo.enemyTypeToItemNames();
-
-        // Add loot types for recipe ingredients (crafting + workbench upgrades)
-        for (String ingredientName : recipeInfo.allIngredientNames()) {
-            Optional<Item> ingredient = itemRepository.findByName(ingredientName);
-            ingredient.ifPresent(item -> {
-                if (item.getLootType() != null) {
-                    requiredLootTypes.add(item.getLootType().getName());
-                }
-            });
-        }
 
         // Step 2: Combine explicitly requested enemy types with those derived from item drops
         Set<String> allTargetEnemyTypes = new HashSet<>();
@@ -143,10 +138,10 @@ public class PlannerService {
                     enemySpawnsOnMap, // All enemies for proximity scoring
                     map,
                     enemyTypeToItemNames,
-                    recipeInfo);
+                    ingredientInfo); // Pass ingredient info for bonus scoring
 
             // Resolve Ongoing Items Map: LootType Name -> List of Item Names
-            Map<String, List<String>> ongoingLootMap = resolveOngoingItems(request.ongoingItemNames());
+            Map<String, List<String>> ongoingLootMap = targetResolutionService.resolveOngoingItems(request.ongoingItemNames());
 
             PlannerResponseDto response = new PlannerResponseDto(
                     map.getId(),
@@ -167,96 +162,8 @@ public class PlannerService {
         return results;
     }
 
-    private record TargetItemInfo(
-            Set<String> targetLootTypes,
-            Set<String> targetDroppedByEnemies,
-            Set<String> exclusiveDroppedByEnemies, // Enemies that ONLY drop item, no loot area
-            Map<String, List<String>> lootTypeToItemNames,
-            Map<String, List<String>> enemyTypeToItemNames
-    ) {}
-
-    private TargetItemInfo resolveTargetItemInformation(List<String> itemNames) {
-        Set<String> targetLootTypes = new HashSet<>();
-        Set<String> targetDroppedByEnemies = new HashSet<>();
-        Set<String> exclusiveDroppedByEnemies = new HashSet<>();
-        Map<String, List<String>> lootTypeToItemNames = new HashMap<>();
-        Map<String, List<String>> enemyTypeToItemNames = new HashMap<>();
-
-        if (itemNames != null && !itemNames.isEmpty()) {
-            for (String name : itemNames) {
-                itemRepository.findByName(name)
-                        .ifPresent(item -> {
-                            boolean hasLootType = item.getLootType() != null;
-                            boolean hasDroppedBy = item.getDroppedBy() != null && !item.getDroppedBy().isEmpty();
-
-                            if (hasLootType) {
-                                targetLootTypes.add(item.getLootType().getName());
-                                lootTypeToItemNames.computeIfAbsent(item.getLootType().getName(), k -> new ArrayList<>()).add(name);
-                            }
-                            if (hasDroppedBy) {
-                                targetDroppedByEnemies.addAll(item.getDroppedBy());
-                                item.getDroppedBy().forEach(enemyType ->
-                                        enemyTypeToItemNames.computeIfAbsent(enemyType, k -> new ArrayList<>()).add(name));
-
-                                if (!hasLootType) { // If item ONLY drops from enemy
-                                    exclusiveDroppedByEnemies.addAll(item.getDroppedBy());
-                                }
-                            }
-                        });
-            }
-        }
-        return new TargetItemInfo(targetLootTypes, targetDroppedByEnemies, exclusiveDroppedByEnemies, lootTypeToItemNames, enemyTypeToItemNames);
-    }
-
-    private record RecipeTargetInfo(
-            Set<String> recipeIds,                           // Requested recipe IDs
-            Map<String, Set<String>> recipeToIngredientNames, // ID → ingredient names
-            Map<String, String> recipeToDisplayName,          // ID → "Gunsmith Level 2" or "Battery"
-            Set<String> allIngredientNames                     // Flattened set for resolution
-    ) {}
-
-    private RecipeTargetInfo resolveTargetRecipes(List<String> recipeIds) {
-        if (recipeIds == null || recipeIds.isEmpty()) {
-            return new RecipeTargetInfo(
-                    Collections.emptySet(),
-                    Collections.emptyMap(),
-                    Collections.emptyMap(),
-                    Collections.emptySet()
-            );
-        }
-
-        Map<String, Set<String>> recipeToIngredients = new HashMap<>();
-        Map<String, String> recipeToDisplayName = new HashMap<>();
-        Set<String> allIngredients = new HashSet<>();
-
-        for (String recipeId : recipeIds) {
-            Optional<Recipe> recipe = recipeRepository.findByMetaforgeItemId(recipeId);
-
-            if (recipe.isEmpty()) {
-                log.warn("Recipe not found: {}", recipeId);
-                continue;
-            }
-
-            Recipe targetRecipe = recipe.get();
-            Set<String> ingredients = targetRecipe.getIngredients().stream()
-                    .map(ing -> ing.getItem().getName())
-                    .collect(Collectors.toSet());
-
-            recipeToIngredients.put(recipeId, ingredients);
-            recipeToDisplayName.put(recipeId, targetRecipe.getName());
-            allIngredients.addAll(ingredients);
-        }
-
-        return new RecipeTargetInfo(
-                new HashSet<>(recipeIds),
-                recipeToIngredients,
-                recipeToDisplayName,
-                allIngredients
-        );
-    }
-
     private record RouteResult(double score, List<? extends RoutablePoint> path, String extractionPoint, Double extractionLat,
-            Double extractionLng, List<EnemySpawnDto> enemySpawns) {
+                               Double extractionLng, List<EnemySpawnDto> enemySpawns) {
     }
 
     private RouteResult calculateRouteAndScore(
@@ -269,7 +176,7 @@ public class PlannerService {
             List<MapMarker> allTargetEnemiesOnMap, // All enemies for proximity scoring
             GameMap map,
             Map<String, List<String>> enemyTypeToItemNames,
-            RecipeTargetInfo recipeInfo) {
+            TargetItemInfo ingredientInfo) {
 
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
@@ -288,12 +195,13 @@ public class PlannerService {
                 score = (matchCount > 1) ? (matchCount * 100) : 10;
 
                 // Recipe Ingredient Bonus: Boost areas containing recipe ingredients
-                for (String ingredientName : recipeInfo.allIngredientNames()) {
-                    Optional<Item> ingredient = itemRepository.findByName(ingredientName);
-                    if (ingredient.isPresent() && ingredient.get().getLootType() != null) {
-                        String ingredientLootType = ingredient.get().getLootType().getName();
-                        if (area.getLootTypes().stream().anyMatch(lt -> lt.getName().equals(ingredientLootType))) {
-                            score += 50.0;  // Ingredient found bonus
+                if (ingredientInfo != null) {
+                    for (LootType areaLootType : area.getLootTypes()) {
+                        if (ingredientInfo.lootTypeToItemNames().containsKey(areaLootType.getName())) {
+                            // For each loot type that has ingredients, add bonus * count of ingredients in that loot type
+                            // This approximates the original logic of iterating all ingredients and checking if they are in the area
+                            List<String> ingredientsInLootType = ingredientInfo.lootTypeToItemNames().get(areaLootType.getName());
+                            score += ingredientsInLootType.size() * 50.0;
                         }
                     }
                 }
@@ -783,21 +691,4 @@ public class PlannerService {
                 targetMatchItems.stream().distinct().sorted().toList()
         );
     }
-
-    private Map<String, List<String>> resolveOngoingItems(List<String> itemNames) {
-        if (itemNames == null || itemNames.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        Map<String, List<String>> map = new HashMap<>();
-        for (String name : itemNames) {
-            itemRepository.findByName(name)
-                    .ifPresent(item -> {
-                        if (item.getLootType() != null) {
-                            map.computeIfAbsent(item.getLootType().getName(), k -> new ArrayList<>()).add(name);
-                        }
-                    });
-        }
-        return map;
-    }
-
 }

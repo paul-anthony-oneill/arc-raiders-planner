@@ -62,7 +62,7 @@ public class RecipeControllerTest {
     @Test
     void testCreateRecipe() throws Exception {
         RecipeIngredientDto ingredientDto = new RecipeIngredientDto(1L, "Test Item", 5);
-        RecipeDto recipeDto = new RecipeDto(null, "New Recipe", "Description", RecipeType.CRAFTING, List.of(ingredientDto));
+        RecipeDto recipeDto = new RecipeDto(null, "metaforge_id_123", "New Recipe", "Description", RecipeType.CRAFTING, List.of(ingredientDto));
 
         when(recipeRepository.findByName("New Recipe")).thenReturn(Optional.empty());
         when(itemRepository.findById(1L)).thenReturn(Optional.of(testItem));

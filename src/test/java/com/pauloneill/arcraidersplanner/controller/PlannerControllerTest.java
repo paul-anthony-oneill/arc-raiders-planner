@@ -46,6 +46,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null,
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames
@@ -82,6 +83,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null,
                 true,
                 PlannerRequestDto.RoutingProfile.EASY_EXFIL,
                 Collections.emptyList() // Added ongoingItemNames
@@ -116,6 +118,7 @@ class PlannerControllerTest {
         // Arrange
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Industrial Parts"),
+                null,
                 null,
                 false,
                 PlannerRequestDto.RoutingProfile.AVOID_PVP,
@@ -152,6 +155,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Mechanical Components"),
                 null,
+                null,
                 true,
                 PlannerRequestDto.RoutingProfile.SAFE_EXFIL,
                 Collections.emptyList() // Added ongoingItemNames
@@ -187,6 +191,7 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Nonexistent Item"),
                 null,
+                null,
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames
@@ -210,6 +215,7 @@ class PlannerControllerTest {
         // Arrange
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
+                null,
                 null,
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,

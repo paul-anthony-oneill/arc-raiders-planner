@@ -4,6 +4,7 @@ import com.pauloneill.arcraidersplanner.dto.ItemDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
 import com.pauloneill.arcraidersplanner.model.Item;
+import com.pauloneill.arcraidersplanner.service.DtoMapper;
 import com.pauloneill.arcraidersplanner.service.ItemService;
 import com.pauloneill.arcraidersplanner.service.PlannerService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,10 +31,12 @@ public class ItemController {
 
     private final PlannerService plannerService;
     private final ItemService itemService;
+    private final DtoMapper dtoMapper;
 
-    public ItemController(PlannerService plannerService, ItemService itemService) {
+    public ItemController(PlannerService plannerService, ItemService itemService, DtoMapper dtoMapper) {
         this.plannerService = plannerService;
         this.itemService = itemService;
+        this.dtoMapper = dtoMapper;
     }
 
     /**
@@ -66,9 +69,7 @@ public class ItemController {
             items = itemService.getAllItems();
         }
 
-        return items.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        return dtoMapper.toItemDtos(items);
     }
 
     /**
@@ -150,23 +151,5 @@ public class ItemController {
             )
             @RequestBody PlannerRequestDto request) {
         return plannerService.generateRoute(request);
-    }
-
-    private ItemDto convertToDto(Item item) {
-        ItemDto dto = new ItemDto();
-        dto.setId(item.getId());
-        dto.setName(item.getName());
-        dto.setDescription(item.getDescription());
-        dto.setRarity(item.getRarity());
-        dto.setItemType(item.getItemType());
-        dto.setIconUrl(item.getIconUrl());
-        dto.setValue(item.getValue());
-        dto.setWeight(item.getWeight());
-        dto.setStackSize(item.getStackSize());
-
-        if (item.getLootType() != null) {
-            dto.setLootType(item.getLootType().getName());
-        }
-        return dto;
     }
 }
