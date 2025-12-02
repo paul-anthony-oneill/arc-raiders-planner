@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -37,7 +36,7 @@ class PlannerServiceTest {
     @Mock
     private TargetResolutionService targetResolutionService;
 
-    @InjectMocks
+    private GeometryService geometryService;
     private PlannerService plannerService;
 
     // Test Data
@@ -46,6 +45,9 @@ class PlannerServiceTest {
 
     @BeforeEach
     void setUp() {
+        geometryService = new GeometryService();
+        plannerService = new PlannerService(gameMapRepository, mapMarkerRepository, enemyService, targetResolutionService, geometryService);
+
         industrial = new LootType();
         industrial.setName("Industrial");
 
@@ -155,14 +157,14 @@ class PlannerServiceTest {
         // Mock Markers
         MapMarker hatchA = new MapMarker();
         hatchA.setSubcategory("hatch");
-        hatchA.setLat(0.0);
-        hatchA.setLng(10.0);
+        hatchA.setLat(0.0); // Y
+        hatchA.setLng(10.0); // X (Close)
         hatchA.setName("Easy Hatch");
 
         MapMarker hatchB = new MapMarker();
         hatchB.setSubcategory("hatch");
         hatchB.setLat(0.0);
-        hatchB.setLng(1000.0);
+        hatchB.setLng(1000.0); // X (Far)
         hatchB.setName("Hard Hatch");
 
         when(mapMarkerRepository.findByGameMapId(1L)).thenReturn(List.of(hatchA));

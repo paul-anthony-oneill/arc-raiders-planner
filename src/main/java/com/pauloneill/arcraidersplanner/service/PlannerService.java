@@ -1,7 +1,5 @@
 package com.pauloneill.arcraidersplanner.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pauloneill.arcraidersplanner.dto.AreaDto;
 import com.pauloneill.arcraidersplanner.dto.EnemySpawnDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
@@ -15,7 +13,6 @@ import com.pauloneill.arcraidersplanner.service.TargetResolutionService.TargetIt
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,16 +24,18 @@ public class PlannerService {
     private final MapMarkerRepository mapMarkerRepository;
     private final EnemyService enemyService;
     private final TargetResolutionService targetResolutionService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final GeometryService geometryService;
 
     public PlannerService(GameMapRepository gameMapRepository,
                           MapMarkerRepository mapMarkerRepository,
                           EnemyService enemyService,
-                          TargetResolutionService targetResolutionService) {
+                          TargetResolutionService targetResolutionService,
+                          GeometryService geometryService) {
         this.gameMapRepository = gameMapRepository;
         this.mapMarkerRepository = mapMarkerRepository;
         this.enemyService = enemyService;
         this.targetResolutionService = targetResolutionService;
+        this.geometryService = geometryService;
     }
 
     public List<PlannerResponseDto> generateRoute(PlannerRequestDto request) {
@@ -242,7 +241,7 @@ public class PlannerService {
                 if (!allMapAreas.isEmpty()) {
                     Area referenceArea = allMapAreas.iterator().next(); // Use an actual Area as reference
                     MapMarker nearestExtraction = extractionMarkers.stream()
-                            .min(Comparator.comparingDouble(m -> distance(referenceArea, m)))
+                            .min(Comparator.comparingDouble(m -> geometryService.distance(referenceArea, m)))
                             .orElse(null);
                     if (nearestExtraction != null) {
                         bestExit = (nearestExtraction.getName() != null && !nearestExtraction.getName().isBlank())
@@ -276,7 +275,7 @@ public class PlannerService {
                 if (current instanceof Area areaCurrent && next instanceof Area areaNext) {
                     if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP
                             || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
-                        if (isRouteDangerous(areaCurrent, areaNext, dangerZones)) {
+                        if (geometryService.isRouteDangerous(areaCurrent, areaNext, dangerZones)) {
                             totalScore -= 200; // Heavy penalty for crossing a High Tier zone
                         }
                     }
@@ -296,11 +295,11 @@ public class PlannerService {
         } else {
             RoutablePoint finalRoutablePoint = path.get(path.size() - 1); // Last point for exfil calculation
             MapMarker nearestExtraction = extractionMarkers.stream()
-                    .min(Comparator.comparingDouble(m -> distance(finalRoutablePoint, m)))
+                    .min(Comparator.comparingDouble(m -> geometryService.distance(finalRoutablePoint, m)))
                     .orElse(null);
 
             if (nearestExtraction != null) {
-                double distToExit = distance(finalRoutablePoint, nearestExtraction);
+                double distToExit = geometryService.distance(finalRoutablePoint, nearestExtraction);
 
                 // Apply distance-based scoring bonus for extraction proximity
                 if (profile == PlannerRequestDto.RoutingProfile.EASY_EXFIL
@@ -377,7 +376,7 @@ public class PlannerService {
         while (!unvisited.isEmpty()) {
             final RoutablePoint from = current;
             RoutablePoint nearest = unvisited.stream()
-                    .min(Comparator.comparingDouble(a -> distance(from, a)))
+                    .min(Comparator.comparingDouble(a -> geometryService.distance(from, a)))
                     .orElseThrow();
 
             route.add(nearest);
@@ -394,7 +393,7 @@ public class PlannerService {
     private double calculateTotalDistance(List<? extends RoutablePoint> route) {
         double total = 0;
         for (int i = 0; i < route.size() - 1; i++) {
-            total += distance(route.get(i), route.get(i + 1));
+            total += geometryService.distance(route.get(i), route.get(i + 1));
         }
         return total;
     }
@@ -418,15 +417,15 @@ public class PlannerService {
             for (int i = 0; i < improved.size() - 2; i++) {
                 for (int j = i + 2; j < improved.size(); j++) {
                     // Calculate current distance: i→(i+1) and j→(j+1)
-                    double currentDist = distance(improved.get(i), improved.get(i + 1));
+                    double currentDist = geometryService.distance(improved.get(i), improved.get(i + 1));
                     if (j < improved.size() - 1) {
-                        currentDist += distance(improved.get(j), improved.get(j + 1));
+                        currentDist += geometryService.distance(improved.get(j), improved.get(j + 1));
                     }
 
                     // Calculate swapped distance: i→j and (i+1)→(j+1)
-                    double swappedDist = distance(improved.get(i), improved.get(j));
+                    double swappedDist = geometryService.distance(improved.get(i), improved.get(j));
                     if (j < improved.size() - 1) {
-                        swappedDist += distance(improved.get(i + 1), improved.get(j + 1));
+                        swappedDist += geometryService.distance(improved.get(i + 1), improved.get(j + 1));
                     }
 
                     // If swap reduces distance, reverse the segment
@@ -453,111 +452,6 @@ public class PlannerService {
         return improved;
     }
 
-    // --- HELPERS ---
-
-    /**
-     * Calculates the Euclidean distance between two RoutablePoints.
-     */
-    private double distance(RoutablePoint p1, RoutablePoint p2) {
-        return Math.sqrt(Math.pow(p1.getX() - p2.getX(), 2) + Math.pow(p1.getY() - p2.getY(), 2));
-    }
-
-    /**
-     * Calculates the minimum distance from an enemy marker to the route path.
-     * WHY: Enemy proximity should be measured to the actual path segments, not just
-     * area centroids
-     *
-     * @param enemy Enemy spawn marker
-     * @param path  Route path (list of RoutablePoints)
-     * @return Minimum distance from enemy to any point on the route path
-     */
-    private double distanceToRoutePath(MapMarker enemy, List<? extends RoutablePoint> path) {
-        if (path.isEmpty()) {
-            return Double.MAX_VALUE;
-        }
-
-        // If only one point, use point-to-point distance
-        if (path.size() == 1) {
-            return distance(path.get(0), enemy);
-        }
-
-        // Calculate minimum distance to all route segments
-        double minDistance = Double.MAX_VALUE;
-        for (int i = 0; i < path.size() - 1; i++) {
-            RoutablePoint start = path.get(i);
-            RoutablePoint end = path.get(i + 1);
-
-            double segmentDist = pointToSegmentDistance(
-                    enemy.getX(), enemy.getY(), // Point (enemy position)
-                    start.getX(), start.getY(), // Segment start
-                    end.getX(), end.getY() // Segment end
-            );
-
-            minDistance = Math.min(minDistance, segmentDist);
-        }
-
-        return minDistance;
-    }
-
-    // Check if the line between two areas intersects any High Tier Zone
-    private boolean isRouteDangerous(Area start, Area end, List<Area> dangerZones) {
-        for (Area danger : dangerZones) {
-            if (danger.getId().equals(start.getId()) || danger.getId().equals(end.getId()))
-                continue;
-
-            double dangerRadius = calculateDynamicRadius(danger);
-            double distToHazard = pointToSegmentDistance(
-                    danger.getX(), danger.getY(),
-                    start.getX(), start.getY(),
-                    end.getX(), end.getY());
-
-            if (distToHazard < dangerRadius)
-                return true;
-        }
-        return false;
-    }
-
-    // Dynamic Radius Calculation based on Polygon Area
-    private double calculateDynamicRadius(Area area) {
-        try {
-            // Parse JSON: [[x,y], [x,y], ...]
-            List<List<Double>> coords = objectMapper.readValue(area.getCoordinates(), new TypeReference<>() {
-            });
-            if (coords.isEmpty())
-                return 50.0;
-
-            // Find max distance from center to any vertex
-            double maxDist = 0;
-            for (List<Double> point : coords) {
-                // Based on V4: '[[462,-438]...]' -> Looks like [x, y]
-                double px = point.get(0);
-                double py = point.get(1);
-
-                double d = Math.sqrt(Math.pow(area.getX() - px, 2) + Math.pow(area.getY() - py, 2));
-                if (d > maxDist)
-                    maxDist = d;
-            }
-            return maxDist; // Safe buffer radius
-        } catch (IOException e) {
-            return 100.0; // Fallback default
-        }
-    }
-
-    // Math helper: Distance from Point P(px,py) to Line Segment AB
-    private double pointToSegmentDistance(double px, double py, double ax, double ay, double bx, double by) {
-        double l2 = Math.pow(bx - ax, 2) + Math.pow(by - ay, 2);
-        if (l2 == 0)
-            return Math.sqrt(Math.pow(px - ax, 2) + Math.pow(py - ay, 2));
-
-        double t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
-        t = Math.max(0, Math.min(1, t));
-
-        double projX = ax + t * (bx - ax);
-        double projY = ay + t * (by - ay);
-
-        return Math.sqrt(Math.pow(px - projX, 2) + Math.pow(py - projY, 2));
-    }
-
     /**
      * Scores how well a route passes near target enemy spawn points.
      * WHY: Routes that naturally pass enemies are more efficient for combined
@@ -573,7 +467,7 @@ public class PlannerService {
 
         for (MapMarker enemy : enemies) {
             // Calculate minimum distance to route path segments
-            double minDist = distanceToRoutePath(enemy, path);
+            double minDist = geometryService.distanceToRoutePath(enemy, path);
 
             // Within proximity threshold = full points, drops off linearly
             if (minDist < PROXIMITY_THRESHOLD) {
@@ -606,7 +500,7 @@ public class PlannerService {
 
                     if (!path.isEmpty()) {
                         // Calculate minimum distance from this spawn to the route path segments
-                        distanceToRoute = distanceToRoutePath(enemy, path);
+                        distanceToRoute = geometryService.distanceToRoutePath(enemy, path);
 
                         onRoute = distanceToRoute < PROXIMITY_THRESHOLD;
                     }
