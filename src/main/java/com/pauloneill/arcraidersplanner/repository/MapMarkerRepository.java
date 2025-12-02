@@ -14,6 +14,12 @@ public interface MapMarkerRepository extends JpaRepository<MapMarker, String> {
     // Filter by category (e.g., "arc" for enemies)
     List<MapMarker> findByCategoryIgnoreCase(String category);
 
+    // Find markers by map, subcategory, and excluding a specific category
+    List<MapMarker> findByGameMapIdAndSubcategoryAndCategoryNot(Long gameMapId, String subcategory, String category);
+
+    // Find markers belonging to a specific MarkerGroup
+    List<MapMarker> findByMarkerGroup(com.pauloneill.arcraidersplanner.model.MarkerGroup markerGroup);
+
     // Search ARC enemies by name
     @Query("SELECT m FROM MapMarker m WHERE LOWER(m.category) = 'arc' AND LOWER(m.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     List<MapMarker> findArcEnemiesByName(@Param("name") String name);

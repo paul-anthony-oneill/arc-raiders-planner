@@ -41,6 +41,7 @@ public class MetaforgeSyncService {
     private final RecipeRepository recipeRepository;
     private final CoordinateCalibrationService calibrationService;
     private final ObjectMapper objectMapper;
+    private final MarkerGroupingService markerGroupingService; // NEW
 
     @Value("${metaforge.api.url}")
     private String metaforgeApiUrl;
@@ -48,7 +49,8 @@ public class MetaforgeSyncService {
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
             LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository,
             GameMapRepository gameMapRepository, RecipeRepository recipeRepository,
-            CoordinateCalibrationService calibrationService, ObjectMapper objectMapper) {
+            CoordinateCalibrationService calibrationService, ObjectMapper objectMapper,
+            MarkerGroupingService markerGroupingService) { // NEW
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
@@ -57,6 +59,7 @@ public class MetaforgeSyncService {
         this.recipeRepository = recipeRepository;
         this.calibrationService = calibrationService;
         this.objectMapper = objectMapper;
+        this.markerGroupingService = markerGroupingService; // NEW
     }
 
     /**
@@ -311,6 +314,8 @@ public class MetaforgeSyncService {
             } catch (Exception e) {
                 log.error("Failed to sync markers for {}: {}", map.getName(), e.getMessage());
             }
+            // After all markers for a map are synced, group them
+            markerGroupingService.groupMarkersByContainer(map.getId()); // NEW
         }
         log.info("--- MARKER SYNC COMPLETE ---");
     }

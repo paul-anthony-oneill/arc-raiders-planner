@@ -41,6 +41,9 @@ class MetaforgeSyncServiceTest {
     @MockBean
     private RestClient restClient;
 
+    @MockBean
+    private MarkerGroupingService markerGroupingService;
+
     private GameMap testMap;
 
     private RestClient.Builder restClientBuilderMock;
