@@ -27,6 +27,15 @@ public class MapMarker implements RoutablePoint {
     @JoinColumn(name = "map_id", nullable = false)
     private GameMap gameMap;
 
+    // NEW: Grouping information
+    @ManyToOne
+    @JoinColumn(name = "group_id")
+    private MarkerGroup markerGroup; // NULL if standalone
+
+    private Boolean isGrouped = false;
+
+    private String standaloneReason; // "isolated", "unique_poi", "extraction_point"
+
     @Override
     public double getX() {
         return this.lng;
