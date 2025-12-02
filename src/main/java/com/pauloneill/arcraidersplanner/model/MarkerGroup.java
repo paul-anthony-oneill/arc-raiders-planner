@@ -47,6 +47,10 @@ public class MarkerGroup implements RoutablePoint {
     @OneToMany(mappedBy = "markerGroup", fetch = FetchType.LAZY)
     private List<MapMarker> markers = new ArrayList<>();
 
+    public Long getDatabaseId() {
+        return this.id;
+    }
+
     // RoutablePoint implementation
     @Override
     public String getId() {

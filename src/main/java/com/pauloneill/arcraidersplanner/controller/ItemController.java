@@ -103,6 +103,7 @@ public class ItemController {
                 List.of(itemName),
                 null,
                 java.util.Collections.emptyList(), // targetRecipeIds
+                java.util.Collections.emptyList(), // targetContainerTypes
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 java.util.Collections.emptyList() // ongoingItemNames

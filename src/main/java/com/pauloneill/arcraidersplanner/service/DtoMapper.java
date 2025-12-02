@@ -132,6 +132,43 @@ public class DtoMapper {
     }
 
     /**
+     * Converts ContainerType entity to ContainerTypeDto.
+     */
+    public ContainerTypeDto toDto(ContainerType containerType) {
+        if (containerType == null) return null;
+
+        return new ContainerTypeDto(
+                containerType.getId(),
+                containerType.getName(),
+                containerType.getSubcategory(),
+                containerType.getDescription(),
+                containerType.getIconUrl()
+        );
+    }
+
+    /**
+     * Converts MarkerGroup entity to MarkerGroupDto.
+     */
+    public MarkerGroupDto toDto(MarkerGroup group) {
+        if (group == null) return null;
+
+        return new MarkerGroupDto(
+                group.getDatabaseId(),
+                group.getName(),
+                group.getGameMap().getId(),
+                group.getGameMap().getName(),
+                toDto(group.getContainerType()),
+                group.getCenterLat(),
+                group.getCenterLng(),
+                group.getMarkerCount(),
+                group.getRadius(),
+                group.getMarkers().stream()
+                        .map(MapMarker::getId)
+                        .collect(Collectors.toList())
+        );
+    }
+
+    /**
      * Batch converts Items to ItemDtos.
      * WHY: Convenience method for list operations
      */
