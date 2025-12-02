@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup } from 'react-leaflet'
+import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Circle, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Area, Waypoint, EnemySpawn, RoutingProfile } from './types'
 import L from 'leaflet'
@@ -20,7 +20,7 @@ interface MapProps {
 // Green flag icon for extraction points
 const exitIcon = L.icon({
     iconUrl:
-        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJncmVlbiI+PHBhdGggZD0iTTUgMjFWNGgyTDEzIDhsLTYgNGg2bC02IDR2NXoiLz48L3N2Zz4=',
+        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJncmVlbiI+PHBhdGggZD0iTTUgMjFWNGgyTDEzIDhsLTYgNGh2NmwtNiA0djV6Ii8+PHAvc3ZnPg==',
     iconSize: [40, 40],
     iconAnchor: [20, 40],
     popupAnchor: [0, -40],
@@ -57,12 +57,37 @@ const createEnemyIcon = (onRoute: boolean) => {
     })
 }
 
-// Create numbered DivIcon for route sequence
-const createNumberedIcon = (number: number, isDanger: boolean = false, hasOngoing: boolean = false, isMarker: boolean = false) => {
-    const borderColor = hasOngoing ? '#2196F3' : (isMarker ? '#ff9800' : 'white'); // Orange for marker targets
-    const borderWidth = hasOngoing || isMarker ? '4px' : '3px';
-    const size = hasOngoing || isMarker ? 36 : 32;
-    const bgColor = isMarker ? '#e65100' : (isDanger ? '#ff4444' : '#4CAF50'); // Orange/Red background for marker/danger
+// Create numbered DivIcon for route sequence, now handling MARKER_GROUP
+const createNumberedIcon = (number: number, waypoint: Waypoint) => {
+    const isDanger = waypoint.lootAbundance === 1;
+    const hasOngoing = waypoint.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0;
+    const isMarker = waypoint.type === 'MARKER';
+    const isMarkerGroup = waypoint.type === 'MARKER_GROUP';
+
+    let bgColor = '#4CAF50'; // Default for AREA
+    let borderColor = 'white';
+    let borderWidth = '3px';
+    let size = 32;
+
+    if (isMarker) {
+        bgColor = '#e65100'; // Orange for enemy markers
+        borderColor = '#ff9800';
+        borderWidth = '4px';
+        size = 36;
+    } else if (isMarkerGroup) {
+        bgColor = '#8a2be2'; // Purple for marker groups
+        borderColor = '#9370DB';
+        borderWidth = '4px';
+        size = 38;
+    } else if (isDanger) {
+        bgColor = '#ff4444'; // Red for danger areas
+    }
+
+    if (hasOngoing) {
+        borderColor = '#2196F3'; // Blue for ongoing items
+        borderWidth = '4px';
+        size = Math.max(size, 36); // Ensure size is adequate for badge
+    }
     
     return L.divIcon({
         className: 'numbered-marker',
@@ -161,10 +186,6 @@ const MapComponent: React.FC<MapProps> = ({
     }
 
     // Helpers for checking route status
-    const getWaypointForArea = (areaId: number) => {
-        return routePath.find((wp) => wp.type === 'AREA' && String(wp.id) === String(areaId))
-    }
-
     const formatItemWithContext = (itemName: string) => {
         const context = itemContextMap[itemName];
         if (!context || context.length === 0) return itemName;
@@ -235,20 +256,21 @@ const MapComponent: React.FC<MapProps> = ({
                     const polygonPositions = area.parsedCoordinates;
                     if (!polygonPositions) return null;
 
-                    const waypoint = getWaypointForArea(area.id)
-                    const inRoute = !!waypoint
-                    const isDanger = area.lootAbundance === 1 && showDangerZones
-                    const hasOngoing = waypoint?.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0
+                    const waypoint = routePath.find((wp) => wp.type === 'AREA' && String(wp.id) === String(area.id));
+                    const inRoute = !!waypoint;
+                    const isDangerArea = area.lootAbundance === 1 && showDangerZones; // Renamed to avoid conflict
+                    const hasOngoingItems = waypoint?.ongoingMatchItems && waypoint.ongoingMatchItems.length > 0; // Renamed
 
-                    if (isDanger) return null // Already rendered
+
+                    if (isDangerArea) return null; // Already rendered
 
                     return (
                         <React.Fragment key={`area-${area.id}`}>
                             <Polygon
                                 positions={polygonPositions}
                                 pathOptions={{
-                                    color: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
-                                    fillColor: hasOngoing ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
+                                    color: hasOngoingItems ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
+                                    fillColor: hasOngoingItems ? '#2196F3' : (inRoute ? '#4CAF50' : '#cccccc'),
                                     fillOpacity: inRoute ? 0.4 : 0.1,
                                     weight: inRoute ? 3 : 1,
                                 }}
@@ -287,15 +309,37 @@ const MapComponent: React.FC<MapProps> = ({
 
                 {/* Render Route Waypoints (Stops) */}
                 {routePath.map((wp, index) => {
-                    const isDanger = wp.lootAbundance === 1
-                    const hasOngoing = wp.ongoingMatchItems && wp.ongoingMatchItems.length > 0
-                    const isMarker = wp.type === 'MARKER'
+                    const isMarker = wp.type === 'MARKER';
+                    const isMarkerGroup = wp.type === 'MARKER_GROUP';
                     
+                    if (isMarkerGroup) {
+                        return (
+                            <Circle
+                                key={`group-${wp.id}`}
+                                center={coordsToLatLng(wp.x, wp.y)}
+                                radius={wp.radius || 50} // Use radius from waypoint or default
+                                pathOptions={{
+                                    color: '#8a2be2',
+                                    fillColor: '#8a2be2',
+                                    fillOpacity: 0.2,
+                                    weight: 2,
+                                }}
+                            >
+                                <Popup>
+                                    <strong>Stop #{index + 1}: {wp.name}</strong><br />
+                                    <strong style={{color: '#8a2be2'}}>📦 CONTAINER ZONE</strong><br />
+                                    Container Type: {wp.containerType}<br />
+                                    Possible Spawns: {wp.markerCount}
+                                </Popup>
+                            </Circle>
+                        )
+                    }
+
                     return (
                         <Marker
                             key={`wp-${index}`}
                             position={coordsToLatLng(wp.x, wp.y)}
-                            icon={createNumberedIcon(index + 1, isDanger, hasOngoing, isMarker)}
+                            icon={createNumberedIcon(index + 1, wp)}
                         >
                             <Popup>
                                 <strong>Stop #{index + 1}: {wp.name}</strong>
@@ -381,6 +425,10 @@ const MapComponent: React.FC<MapProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
                     <div style={{ width: '20px', height: '20px', backgroundColor: '#e65100', borderRadius: '50%', marginRight: '8px', border: '3px solid #ff9800' }}></div>
                     <span>Enemy Target Stop</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ width: '20px', height: '20px', backgroundColor: '#8a2be2', borderRadius: '50%', marginRight: '8px', border: '3px solid #9370DB' }}></div>
+                    <span>Container Zone Stop</span>
                 </div>
                 {/* ... other legend items ... */}
             </div>

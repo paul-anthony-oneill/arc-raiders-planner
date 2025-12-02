@@ -65,9 +65,12 @@ export interface Waypoint {
   name: string;
   x: number;
   y: number;
-  type: "AREA" | "MARKER";
+  type: "AREA" | "MARKER" | "MARKER_GROUP";
   lootTypes?: string[];
   lootAbundance?: number;
+  containerType?: string; // Only relevant for MARKER_GROUP type
+  markerCount?: number;   // Only relevant for MARKER_GROUP type
+  radius?: number;        // Only relevant for MARKER_GROUP type
   ongoingMatchItems?: string[];
   targetMatchItems?: string[];
 }
@@ -94,15 +97,7 @@ export const RoutingProfile = {
 export type RoutingProfile =
   (typeof RoutingProfile)[keyof typeof RoutingProfile];
 
-export interface PlannerRequest {
-  targetItemNames: string[];
-  targetEnemyTypes: string[]; // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
-  targetRecipeIds: string[]; // Recipe IDs for crafting/upgrades (e.g., ["hideout_weapon_bench_lvl2", "item_123"])
-  targetContainerTypes: string[]; // Container type subcategories (e.g., ["red-locker", "raider-cache"])
-  hasRaiderKey: boolean;
-  routingProfile: RoutingProfile;
-  ongoingItemNames?: string[];
-}
+
 
 export const RecipeType = {
   CRAFTING: "CRAFTING",

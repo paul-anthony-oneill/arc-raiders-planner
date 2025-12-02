@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { RoutingProfile } from "./types";
 import type { Item, PlannerResponse, ContainerType } from "./types";
-import type { MapDataResponse } from "./types/stats";
-import MapComponent from "./MapComponent";
 import { RecipeSelector } from "./RecipeSelector";
 import { ContainerIndex } from "./ContainerIndex";
+
+// Define PlannerRequest interface locally in Planner.tsx
+export interface PlannerRequest {
+  targetItemNames: string[];
+  targetEnemyTypes: string[];
+  targetRecipeIds: string[];
+  targetContainerTypes: string[];
+  hasRaiderKey: boolean;
+  routingProfile: RoutingProfile;
+  ongoingItemNames?: string[];
+}
+
 
 const API_PLANNER_URL = "/api/planner";
 const API_MAP_DATA_URL = "/api/maps";
@@ -84,18 +94,20 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
 
       try {
         // POST to new planner API
-        const response = await fetch(API_PLANNER_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const requestBody: PlannerRequestType = {
             targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
             targetEnemyTypes: targetEnemies,
-            targetRecipeIds: targetRecipes,
+            targetRecipeIds: targetRecipes as string[], // Explicit cast
             targetContainerTypes: targetContainers,
             hasRaiderKey,
             routingProfile,
             ongoingItemNames: [],
-          }),
+        };
+
+        const response = await fetch(API_PLANNER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
         });
 
         const results: PlannerResponse[] = await response.json();
