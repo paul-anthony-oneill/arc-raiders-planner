@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
 
 /**
  * Service for spatial calculations and geometry operations.
@@ -28,6 +28,13 @@ public class GeometryService {
      */
     public double distance(RoutablePoint p1, RoutablePoint p2) {
         return Math.sqrt(Math.pow(p1.getX() - p2.getX(), 2) + Math.pow(p1.getY() - p2.getY(), 2));
+    }
+
+    /**
+     * Calculates Euclidean distance between two coordinates.
+     */
+    public double pointToPointDistance(double x1, double y1, double x2, double y2) {
+        return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
     }
 
     /**
@@ -152,4 +159,112 @@ public class GeometryService {
         }
         return false;
     }
+
+    /**
+     * Clusters markers by proximity using DBSCAN-like algorithm.
+     * WHY: Groups nearby container markers into logical spawn zones
+     *
+     * @param markers List of markers to cluster
+     * @param maxDistance Maximum distance between markers in same cluster
+     * @param minClusterSize Minimum markers to form a cluster (default: 2)
+     * @return Map of cluster ID to list of markers
+     */
+    public Map<Integer, List<MapMarker>> clusterMarkersByProximity(
+            List<MapMarker> markers,
+            double maxDistance,
+            int minClusterSize
+    ) {
+        Map<Integer, List<MapMarker>> clusters = new HashMap<>();
+        Set<MapMarker> visited = new HashSet<>();
+        int clusterId = 0;
+
+        for (MapMarker marker : markers) {
+            if (visited.contains(marker)) continue;
+
+            List<MapMarker> cluster = new ArrayList<>();
+            expandCluster(marker, markers, cluster, visited, maxDistance);
+
+            if (cluster.size() >= minClusterSize) {
+                clusters.put(clusterId++, cluster);
+            } else {
+                // Standalone markers (too isolated to group)
+                // Assign each standalone marker to its own unique cluster ID
+                for (MapMarker standalone : cluster) {
+                    clusters.put(clusterId++, List.of(standalone));
+                }
+            }
+        }
+
+        return clusters;
+    }
+
+    private void expandCluster(
+            MapMarker marker,
+            List<MapMarker> allMarkers,
+            List<MapMarker> cluster,
+            Set<MapMarker> visited,
+            double maxDistance
+    ) {
+        // Use a queue for iterative expansion to avoid stack overflow on large datasets
+        Queue<MapMarker> queue = new LinkedList<>();
+        queue.add(marker);
+        visited.add(marker);
+        cluster.add(marker);
+
+        while (!queue.isEmpty()) {
+            MapMarker current = queue.poll();
+
+            for (MapMarker neighbor : allMarkers) {
+                if (visited.contains(neighbor)) continue;
+
+                double distance = pointToPointDistance(
+                        current.getLng(), current.getLat(),
+                        neighbor.getLng(), neighbor.getLat()
+                );
+
+                if (distance <= maxDistance) {
+                    visited.add(neighbor);
+                    cluster.add(neighbor);
+                    queue.add(neighbor);
+                }
+            }
+        }
+    }
+
+    /**
+     * Calculates the center point and radius of a marker cluster.
+     */
+    public ClusterMetrics calculateClusterMetrics(List<MapMarker> markers) {
+        if (markers.isEmpty()) {
+            throw new IllegalArgumentException("Cannot calculate metrics for empty cluster");
+        }
+
+        // Calculate centroid
+        double avgLat = markers.stream()
+                .mapToDouble(MapMarker::getLat)
+                .average()
+                .orElse(0.0);
+        double avgLng = markers.stream()
+                .mapToDouble(MapMarker::getLng)
+                .average()
+                .orElse(0.0);
+
+        // Calculate effective radius (max distance from centroid)
+        double maxRadius = markers.stream()
+                .mapToDouble(m -> pointToPointDistance(avgLng, avgLat, m.getLng(), m.getLat()))
+                .max()
+                .orElse(0.0);
+
+        // Ensure a minimum radius for visibility
+        if (maxRadius < 10.0) maxRadius = 10.0;
+
+        return new ClusterMetrics(avgLat, avgLng, maxRadius, markers.size());
+    }
+
+    public record ClusterMetrics(
+            double centerLat,
+            double centerLng,
+            double radius,
+            int markerCount
+    ) {}
 }
