@@ -73,6 +73,37 @@ public class ItemController {
     }
 
     /**
+     * Get detailed item information with crafting context.
+     * WHY: Provides comprehensive item data for the tactical planner center panel,
+     * including crafting recipes, usage in other recipes, and enemy drop sources
+     *
+     * @param id Item ID
+     * @return ItemDto with full crafting/usage context
+     */
+    @Operation(
+            summary = "Get item details with crafting context",
+            description = "Retrieves detailed item information including crafting recipe, " +
+                    "recipes that use this item as ingredient, and enemy drop sources"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Item details retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = ItemDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Item not found"
+            )
+    })
+    @GetMapping("/{id}/details")
+    public ItemDto getItemDetails(
+            @Parameter(description = "Item ID", required = true)
+            @PathVariable Long id) {
+        return itemService.getItemWithContext(id);
+    }
+
+    /**
      * Backward-compatible endpoint for legacy UI.
      * WHY: Maintains compatibility with older frontend versions that use simple single-item queries
      *
