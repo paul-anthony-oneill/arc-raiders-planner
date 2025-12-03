@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 export interface CatalogIndexProps<T> {
   apiUrl: string;
   title: string;
-  onSelect: (item: T) => void;
+  onSelect?: (item: T) => void; // Made optional since it's not always needed
   renderItem: (item: T) => React.ReactNode;
   searchable?: boolean;
   searchPlaceholder?: string;
@@ -25,7 +25,6 @@ export interface CatalogIndexProps<T> {
 export function CatalogIndex<T>({
   apiUrl,
   title,
-  onSelect,
   renderItem,
   searchable = true,
   searchPlaceholder = "Search...",

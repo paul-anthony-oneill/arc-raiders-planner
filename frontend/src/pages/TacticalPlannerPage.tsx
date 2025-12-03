@@ -1,5 +1,10 @@
 import React, { useState, useCallback } from 'react'
 import { useTargetSelection } from '../hooks/useTargetSelection'
+import { LeftPanel } from '../components/LeftPanel'
+import { CenterPanel } from '../components/CenterPanel'
+import { MinimizedMapView } from '../components/MinimizedMapView'
+import { MaximizedMapView } from '../components/MaximizedMapView'
+import { itemApi } from '../api/itemApi'
 import type { Item, PlannerResponse, Area } from '../types'
 
 /**
@@ -24,22 +29,47 @@ export const TacticalPlannerPage: React.FC = () => {
   const [uiMode, setUiMode] = useState<'SELECTION' | 'PLANNING'>('SELECTION')
   const [selectedMap, setSelectedMap] = useState<string>('Dam Battlegrounds')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
-  const [, ] = useState<Area[]>([])
-  const [, setCalculatedRoute] = useState<PlannerResponse | null>(null)
+  const [highlightedZones] = useState<Area[]>([])
+  const [calculatedRoute, setCalculatedRoute] = useState<PlannerResponse | null>(null)
+
+  // Handle item selection from LeftPanel
+  const handleItemSelect = useCallback(async (item: Item) => {
+    try {
+      // Fetch enhanced item details
+      const details = await itemApi.getItemDetails(item.id)
+      setSelectedItem(details)
+
+      // TODO: Highlight zones on current map
+      // const zones = await mapApi.getZonesWithItem(selectedMap, item.name);
+      // setHighlightedZones(zones);
+    } catch (error) {
+      console.error('Failed to fetch item details:', error)
+      setSelectedItem(item) // Fallback to basic item data
+    }
+  }, [])
 
   const handleCalculateRoute = useCallback(async () => {
     // TODO: Build request and call planner API
+    // const request: PlannerRequest = {
+    //   targetItemNames: priorityTargets.filter(t => t.type === 'ITEM').map(t => t.name),
+    //   targetEnemyTypes: priorityTargets.filter(t => t.type === 'ENEMY').map(t => t.name),
+    //   targetRecipeIds: priorityTargets.filter(t => t.type === 'RECIPE').map(t => String(t.id)),
+    //   targetContainerTypes: priorityTargets.filter(t => t.type === 'CONTAINER').map(t => t.name),
+    //   ongoingItemNames: ongoingTargets.filter(t => t.type === 'ITEM').map(t => t.name),
+    //   routingProfile,
+    //   hasRaiderKey,
+    // };
     // const route = await plannerApi.generateRoute(request);
     // setCalculatedRoute(route);
     setUiMode('PLANNING')
-  }, [priorityTargets, ongoingTargets, selectedMap, routingProfile, hasRaiderKey])
+  }, [priorityTargets, ongoingTargets, routingProfile, hasRaiderKey])
 
   const handleMinimize = useCallback(() => {
     setCalculatedRoute(null)
     setUiMode('SELECTION')
   }, [])
 
-  const handleMapChange = useCallback(async (newMap: string) => {
+  const handleMapChange = useCallback((newMap: string) => {
     setSelectedMap(newMap)
     setCalculatedRoute(null) // Clear old route
 
@@ -48,27 +78,19 @@ export const TacticalPlannerPage: React.FC = () => {
     //   const zones = await mapApi.getZonesWithItem(newMap, selectedItem.name);
     //   setHighlightedZones(zones);
     // }
-  }, [selectedItem])
+  }, [])
 
   return (
     <div className="h-screen grid grid-cols-[300px_1fr_2fr] gap-4 p-4 bg-gray-900">
       {/* Left Panel - Always visible */}
       <div className="bg-gray-800 rounded-lg p-4 overflow-y-auto">
-        <h2 className="text-xl font-bold text-white mb-4">Objectives</h2>
-        <p className="text-gray-400 text-sm">Left Panel - Coming soon</p>
-        {/* TODO: Add LeftPanel component */}
+        <LeftPanel onItemSelect={handleItemSelect} />
       </div>
 
       {/* Center Panel - Hidden in PLANNING mode */}
       {uiMode === 'SELECTION' && (
         <div className="bg-gray-800 rounded-lg p-4 overflow-y-auto">
-          <h2 className="text-xl font-bold text-white mb-4">Item Details</h2>
-          {selectedItem ? (
-            <p className="text-gray-400 text-sm">Selected: {selectedItem.name}</p>
-          ) : (
-            <p className="text-gray-400 text-sm">Select an item to view details</p>
-          )}
-          {/* TODO: Add CenterPanel component */}
+          <CenterPanel item={selectedItem} />
         </div>
       )}
 
@@ -77,50 +99,18 @@ export const TacticalPlannerPage: React.FC = () => {
         uiMode === 'PLANNING' ? 'col-span-2' : ''
       }`}>
         {uiMode === 'SELECTION' ? (
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">Map Preview</h2>
-              <select
-                value={selectedMap}
-                onChange={(e) => handleMapChange(e.target.value)}
-                className="mt-2 bg-gray-700 text-white px-4 py-2 rounded border border-gray-600 w-full"
-              >
-                <option value="Dam Battlegrounds">Dam Battlegrounds</option>
-                <option value="Ironwood Hydroponics">Ironwood Hydroponics</option>
-                <option value="Scrapworks">Scrapworks</option>
-              </select>
-            </div>
-            <div className="flex-1 relative">
-              <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                Map visualization - Coming soon
-              </div>
-              {/* TODO: Add MinimizedMapView component */}
-              <button
-                onClick={handleCalculateRoute}
-                disabled={priorityTargets.length === 0}
-                className={`absolute bottom-6 right-6 px-6 py-3 rounded-full font-semibold shadow-lg transition-all duration-200 ${
-                  priorityTargets.length > 0
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
-                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                Calculate Route
-              </button>
-            </div>
-          </div>
+          <MinimizedMapView
+            selectedMap={selectedMap}
+            onMapChange={handleMapChange}
+            highlightedZones={highlightedZones}
+            onCalculateRoute={handleCalculateRoute}
+            hasTargets={priorityTargets.length > 0}
+          />
         ) : (
-          <div className="h-full relative">
-            <button
-              onClick={handleMinimize}
-              className="absolute top-4 right-4 z-20 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
-            >
-              ✕ Minimize
-            </button>
-            <div className="h-full flex items-center justify-center text-gray-500">
-              Route visualization - Coming soon
-            </div>
-            {/* TODO: Add MaximizedMapView component */}
-          </div>
+          <MaximizedMapView
+            route={calculatedRoute}
+            onMinimize={handleMinimize}
+          />
         )}
       </div>
     </div>
