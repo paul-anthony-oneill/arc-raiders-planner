@@ -68,12 +68,7 @@ export function CatalogIndex<T>({
 
   const displayedItems = filterItems ? filterItems(items) : items;
 
-  const handleKeyDown = (e: React.KeyboardEvent, item: T) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onSelect(item);
-    }
-  };
+  // TODO: Add keyboard accessibility to item selection
 
   if (loading && displayedItems.length === 0 && !error) {
     return (

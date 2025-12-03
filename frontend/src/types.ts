@@ -14,6 +14,11 @@ export interface Item {
   weight: number;
   stackSize: number;
   lootType: string | null; // Just the loot type name from backend
+
+  // Detail panel fields (populated by /api/items/{id}/details endpoint)
+  droppedBy?: string[];           // Enemy IDs that drop this item
+  usedInRecipes?: Recipe[];   // Recipes that use this item as ingredient
+  craftingRecipe?: Recipe;        // Recipe to craft this item (if craftable)
 }
 
 // Represents an enemy type for selection (not a specific spawn)

@@ -2,34 +2,26 @@ import { createRouter, createRoute, createRootRoute, RouterProvider } from '@tan
 import React from 'react'
 
 // Import pages
-import SetupPage from './pages/SetupPage'
-import PlannerPage from './pages/PlannerPage'
+import { TacticalPlannerPage } from './pages/TacticalPlannerPage'
 
 // Create root route
 const rootRoute = createRootRoute()
 
-// Create setup route
-const setupRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/setup',
-  component: SetupPage,
-})
-
-// Create planner route
-const plannerRoute = createRoute({
+// Create tactical planner route (replaces /setup and /planner)
+const tacticalPlannerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/planner',
-  component: PlannerPage,
+  component: TacticalPlannerPage,
 })
 
-// Create index route (redirects to setup)
+// Create index route (redirects to planner)
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
     const router = useRouter()
     React.useEffect(() => {
-      router.navigate({ to: '/setup' })
+      router.navigate({ to: '/planner' })
     }, [router])
     return null
   },
@@ -38,8 +30,7 @@ const indexRoute = createRoute({
 // Create route tree
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  setupRoute,
-  plannerRoute,
+  tacticalPlannerRoute,
 ])
 
 // Create router instance
