@@ -116,10 +116,34 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Header */}
       <div className="p-4 border-b border-retro-sand/20 z-20">
-        <h2 className="text-xl font-display text-retro-orange text-glow uppercase tracking-widest">
-          Mission Control
-        </h2>
-        <div className="text-xs text-retro-sand-dim font-mono mt-1">
+        <div className="flex items-start justify-between mb-2">
+          <h2 className="text-xl font-display text-retro-orange text-glow uppercase tracking-widest">
+            Mission Control
+          </h2>
+          <a
+            href="/setup"
+            className="
+              text-xs
+              font-mono
+              text-retro-sand-dim
+              hover:text-retro-orange
+              transition-colors
+              border
+              border-retro-sand/20
+              hover:border-retro-orange/50
+              px-2
+              py-1
+              whitespace-nowrap
+            "
+            onClick={(e) => {
+              e.preventDefault()
+              window.location.href = '/setup'
+            }}
+          >
+            ← Setup
+          </a>
+        </div>
+        <div className="text-xs text-retro-sand-dim font-mono">
           SYS.VER.2.1.0 // TARGETING
         </div>
       </div>

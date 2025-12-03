@@ -1,19 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { RoutingProfile } from "./types";
-import type { Item, PlannerResponse, ContainerType } from "./types";
+import type { Item, PlannerResponse, ContainerType, PlannerRequest } from "./types";
+import type { MapDataResponse } from "./types/stats";
 import { RecipeSelector } from "./RecipeSelector";
 import { ContainerIndex } from "./ContainerIndex";
-
-// Define PlannerRequest interface locally in Planner.tsx
-export interface PlannerRequest {
-  targetItemNames: string[];
-  targetEnemyTypes: string[];
-  targetRecipeIds: string[];
-  targetContainerTypes: string[];
-  hasRaiderKey: boolean;
-  routingProfile: RoutingProfile;
-  ongoingItemNames?: string[];
-}
+import MapComponent from "./MapComponent";
 
 
 const API_PLANNER_URL = "/api/planner";
@@ -94,7 +85,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
 
       try {
         // POST to new planner API
-        const requestBody: PlannerRequestType = {
+        const requestBody: PlannerRequest = {
             targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
             targetEnemyTypes: targetEnemies,
             targetRecipeIds: targetRecipes as string[], // Explicit cast

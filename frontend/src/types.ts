@@ -122,6 +122,16 @@ export interface Recipe {
   ingredients: RecipeIngredient[];
 }
 
+export interface PlannerRequest {
+  targetItemNames: string[];
+  targetEnemyTypes: string[];
+  targetRecipeIds: string[];
+  targetContainerTypes: string[];
+  hasRaiderKey: boolean;
+  routingProfile: RoutingProfile;
+  ongoingItemNames?: string[];
+}
+
 export interface PlannerResponse {
   mapId: number;
   mapName: string;
@@ -131,4 +141,24 @@ export interface PlannerResponse {
   extractionLat?: number;  // Calibrated Y coordinate of extraction point
   extractionLng?: number;  // Calibrated X coordinate of extraction point
   nearbyEnemySpawns: EnemySpawn[]; // All spawns of selected enemy types with proximity info
+}
+
+// Session state management types
+export interface TargetSelection {
+  id: string | number;
+  type: "ITEM" | "RECIPE" | "ENEMY" | "CONTAINER";
+  priority: "PRIORITY" | "ONGOING";
+  name: string;
+  iconUrl?: string;
+  rarity?: string;
+  lootZone?: string;
+  data?: Item | Recipe | EnemyType | ContainerType; // Store full object for convenience
+}
+
+export interface SessionState {
+  priorityTargets: TargetSelection[];
+  ongoingTargets: TargetSelection[];
+  routingProfile: RoutingProfile;
+  hasRaiderKey: boolean;
+  lastCalculatedHash: string | null;
 }

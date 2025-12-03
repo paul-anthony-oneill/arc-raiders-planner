@@ -1,20 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
-import Sidebar from './Sidebar'
-import DataHUD from './DataHUD'
-import MapComponent from './MapComponent'
-import MapEditor from './MapEditor'
-import RecipeViewer from './RecipeViewer'
-import { Toast } from './components/Toast'
-import { useToast } from './hooks/useToast'
-import { RoutingProfile } from './types'
-import type { Item, EnemyType, PlannerResponse, PlannerRequest, Recipe } from './types'
-import type { RouteStats, MapDataResponse } from './types/stats'
-import { recipeApi } from './api/recipeApi'
-import './App.css'
+import Sidebar from '../Sidebar'
+import DataHUD from '../DataHUD'
+import MapComponent from '../MapComponent'
+import MapEditor from '../MapEditor'
+import RecipeViewer from '../RecipeViewer'
+import { Toast } from '../components/Toast'
+import { useToast } from '../hooks/useToast'
+import { RoutingProfile } from '../types'
+import type { Item, EnemyType, PlannerResponse, PlannerRequest, Recipe } from '../types'
+import type { RouteStats, MapDataResponse } from '../types/stats'
+import { recipeApi } from '../api/recipeApi'
+import '../App.css'
 
 const API_PLAN_URL = '/api/items/plan'
 
-function App() {
+/**
+ * Planner Page - Main route visualization and control interface
+ * WHY: Renamed from App.tsx to support multi-page architecture
+ */
+function PlannerPage() {
     // Toast notifications
     const { toasts, showToast, hideToast } = useToast();
 
@@ -368,4 +372,4 @@ function App() {
     )
 }
 
-export default App
+export default PlannerPage

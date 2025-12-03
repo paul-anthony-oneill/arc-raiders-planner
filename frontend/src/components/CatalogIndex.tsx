@@ -122,41 +122,15 @@ export function CatalogIndex<T>({
       )}
 
       <div
-        className="catalog-items"
-        style={{
-          maxHeight: "60vh",
-          overflowY: "auto",
-          border: "1px solid #ccc",
-          padding: "10px",
-        }}
+        className="catalog-items grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
       >
         {displayedItems.length === 0 ? (
-          <div style={{ color: "#666", padding: "20px", textAlign: "center" }}>
+          <div className="col-span-full text-retro-sand-dim p-8 text-center">
             No items found
           </div>
         ) : (
           displayedItems.map(item => (
-            <div
-              key={getItemKey(item)}
-              role="button"
-              tabIndex={0}
-              className="catalog-item cursor-pointer outline-none focus:ring-2 focus:ring-retro-orange"
-              onClick={() => onSelect(item)}
-              onKeyDown={(e) => handleKeyDown(e, item)}
-              style={{
-                border: "1px solid #eee",
-                padding: "10px",
-                marginBottom: "10px",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#f5f5f5";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "white";
-              }}
-            >
+            <div key={getItemKey(item)}>
               {renderItem(item)}
             </div>
           ))
