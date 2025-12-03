@@ -1,9 +1,11 @@
-import React from 'react'
-import type { PlannerResponse } from '../types'
+import React, { useMemo } from 'react'
+import MapComponent from '../MapComponent'
+import type { PlannerResponse, Area } from '../types'
 
 interface MaximizedMapViewProps {
   route: PlannerResponse | null
   onMinimize: () => void
+  routingProfile?: string
 }
 
 /**
@@ -13,7 +15,27 @@ interface MaximizedMapViewProps {
 export const MaximizedMapView: React.FC<MaximizedMapViewProps> = ({
   route,
   onMinimize,
+  routingProfile,
 }) => {
+  // Convert waypoints to areas for MapComponent
+  const areas = useMemo<Area[]>(() => {
+    if (!route || !route.path) return []
+
+    return route.path
+      .filter(wp => wp.type === 'AREA')
+      .map(wp => ({
+        id: typeof wp.id === 'number' ? wp.id : parseInt(wp.id as string, 10),
+        name: wp.name,
+        mapX: wp.x,
+        mapY: wp.y,
+        coordinates: undefined, // Will be loaded by map if needed
+        lootTypes: wp.lootTypes || [],
+        lootAbundance: wp.lootAbundance,
+        ongoingMatchItems: wp.ongoingMatchItems,
+        targetMatchItems: wp.targetMatchItems,
+      }))
+  }, [route])
+
   if (!route) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-800 rounded-lg">
@@ -90,38 +112,18 @@ export const MaximizedMapView: React.FC<MaximizedMapViewProps> = ({
       </div>
 
       {/* Map Visualization Area */}
-      <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-        {/* Placeholder for actual map component */}
-        <div className="text-center text-gray-500">
-          <svg
-            className="w-32 h-32 mb-4 mx-auto"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1}
-              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-            />
-          </svg>
-          <p>Route visualization - {route.mapName}</p>
-          <p className="text-sm mt-2">{route.path.length} waypoints calculated</p>
-        </div>
-
-        {/* TODO: Replace with actual MapComponent
+      <div className="absolute inset-0 bg-gray-900">
         <MapComponent
           mapName={route.mapName}
-          areas={[]} // Convert route.path to areas
+          areas={areas}
           routePath={route.path}
           extractionPoint={route.extractionPoint}
           extractionLat={route.extractionLat}
           extractionLng={route.extractionLng}
-          enemySpawns={route.nearbyEnemySpawns}
+          enemySpawns={route.nearbyEnemySpawns || []}
           showRoutePath={true}
+          routingProfile={routingProfile as any}
         />
-        */}
       </div>
     </div>
   )

@@ -5,7 +5,8 @@ import { CenterPanel } from '../components/CenterPanel'
 import { MinimizedMapView } from '../components/MinimizedMapView'
 import { MaximizedMapView } from '../components/MaximizedMapView'
 import { itemApi } from '../api/itemApi'
-import type { Item, PlannerResponse, Area } from '../types'
+import { plannerApi } from '../api/plannerApi'
+import type { Item, PlannerResponse, Area, PlannerRequest } from '../types'
 
 /**
  * Unified Tactical Planner Interface
@@ -31,6 +32,8 @@ export const TacticalPlannerPage: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [highlightedZones] = useState<Area[]>([])
   const [calculatedRoute, setCalculatedRoute] = useState<PlannerResponse | null>(null)
+  const [isCalculating, setIsCalculating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Handle item selection from LeftPanel
   const handleItemSelect = useCallback(async (item: Item) => {
@@ -49,19 +52,37 @@ export const TacticalPlannerPage: React.FC = () => {
   }, [])
 
   const handleCalculateRoute = useCallback(async () => {
-    // TODO: Build request and call planner API
-    // const request: PlannerRequest = {
-    //   targetItemNames: priorityTargets.filter(t => t.type === 'ITEM').map(t => t.name),
-    //   targetEnemyTypes: priorityTargets.filter(t => t.type === 'ENEMY').map(t => t.name),
-    //   targetRecipeIds: priorityTargets.filter(t => t.type === 'RECIPE').map(t => String(t.id)),
-    //   targetContainerTypes: priorityTargets.filter(t => t.type === 'CONTAINER').map(t => t.name),
-    //   ongoingItemNames: ongoingTargets.filter(t => t.type === 'ITEM').map(t => t.name),
-    //   routingProfile,
-    //   hasRaiderKey,
-    // };
-    // const route = await plannerApi.generateRoute(request);
-    // setCalculatedRoute(route);
-    setUiMode('PLANNING')
+    setIsCalculating(true)
+    setError(null)
+
+    try {
+      // Build planner request from selected targets
+      const request: PlannerRequest = {
+        targetItemNames: priorityTargets.filter(t => t.type === 'ITEM').map(t => t.name),
+        targetEnemyTypes: priorityTargets.filter(t => t.type === 'ENEMY').map(t => t.name),
+        targetRecipeIds: priorityTargets.filter(t => t.type === 'RECIPE').map(t => String(t.id)),
+        targetContainerTypes: priorityTargets.filter(t => t.type === 'CONTAINER').map(t => t.name),
+        ongoingItemNames: ongoingTargets.filter(t => t.type === 'ITEM').map(t => t.name),
+        routingProfile,
+        hasRaiderKey,
+      }
+
+      // Call planner API (returns array of routes ranked by score)
+      const routes = await plannerApi.generateRoute(request)
+
+      if (routes && routes.length > 0) {
+        // Use the top-ranked route
+        setCalculatedRoute(routes[0])
+        setUiMode('PLANNING')
+      } else {
+        setError('No routes found for selected targets')
+      }
+    } catch (err) {
+      console.error('Failed to calculate route:', err)
+      setError(err instanceof Error ? err.message : 'Failed to calculate route')
+    } finally {
+      setIsCalculating(false)
+    }
   }, [priorityTargets, ongoingTargets, routingProfile, hasRaiderKey])
 
   const handleMinimize = useCallback(() => {
@@ -98,6 +119,30 @@ export const TacticalPlannerPage: React.FC = () => {
       <div className={`bg-gray-800 rounded-lg overflow-hidden ${
         uiMode === 'PLANNING' ? 'col-span-2' : ''
       }`}>
+        {/* Error notification */}
+        {error && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {error}
+              <button onClick={() => setError(null)} className="ml-2 hover:text-gray-200">✕</button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading overlay */}
+        {isCalculating && (
+          <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center">
+            <div className="bg-gray-800 rounded-lg p-6 flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+              <p className="text-white font-semibold">Calculating optimal route...</p>
+              <p className="text-gray-400 text-sm mt-2">Analyzing {priorityTargets.length} target{priorityTargets.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        )}
+
         {uiMode === 'SELECTION' ? (
           <MinimizedMapView
             selectedMap={selectedMap}
@@ -110,6 +155,7 @@ export const TacticalPlannerPage: React.FC = () => {
           <MaximizedMapView
             route={calculatedRoute}
             onMinimize={handleMinimize}
+            routingProfile={routingProfile}
           />
         )}
       </div>
