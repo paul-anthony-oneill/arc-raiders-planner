@@ -14,6 +14,7 @@ export interface CatalogIndexProps<T> {
   getItemKey: (item: T) => string | number;
   subtitle?: string;
   filterItems?: (items: T[]) => T[];
+  className?: string;
 }
 
 /**
@@ -30,7 +31,8 @@ export function CatalogIndex<T>({
   searchPlaceholder = "Search...",
   getItemKey,
   subtitle,
-  filterItems
+  filterItems,
+  className
 }: CatalogIndexProps<T>) {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export function CatalogIndex<T>({
 
   if (loading && displayedItems.length === 0 && !error) {
     return (
-      <div style={{ maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif" }}>
+      <div className={className || ""} style={{ maxWidth: "100%", margin: "0 auto", fontFamily: "sans-serif" }}>
         <h2>{title}</h2>
         <p>Loading...</p>
       </div>
@@ -80,7 +82,7 @@ export function CatalogIndex<T>({
 
   if (error) {
     return (
-      <div style={{ maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif" }}>
+      <div className={className || ""} style={{ maxWidth: "100%", margin: "0 auto", fontFamily: "sans-serif" }}>
         <h2>{title}</h2>
         <p style={{ color: "red" }}>Error: {error}</p>
       </div>
@@ -89,8 +91,8 @@ export function CatalogIndex<T>({
 
   return (
     <div
-      className="catalog-index-container"
-      style={{ maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif" }}
+      className={`catalog-index-container ${className || ""}`}
+      style={{ fontFamily: "sans-serif" }}
     >
       <h2>{title} ({displayedItems.length} {displayedItems.length === 1 ? 'item' : 'items'})</h2>
 
@@ -116,7 +118,7 @@ export function CatalogIndex<T>({
       )}
 
       <div
-        className="catalog-items grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        className="catalog-items grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
       >
         {displayedItems.length === 0 ? (
           <div className="col-span-full text-retro-sand-dim p-8 text-center">

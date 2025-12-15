@@ -1,6 +1,6 @@
 import type { PlannerRequest, PlannerResponse } from '../types'
 
-const API_URL = 'http://localhost:8080/api/items'
+const API_URL = '/api/items'
 
 export const plannerApi = {
   /**

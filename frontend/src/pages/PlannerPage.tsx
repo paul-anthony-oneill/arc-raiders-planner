@@ -253,9 +253,9 @@ function PlannerPage() {
                 {isSidebarOpen ? '✕' : '☰'}
             </button>
 
-            {/* Sidebar (Left) */}
+            {/* Sidebar (Left) - Expanded to 2/3 width */}
             <aside className={`
-                fixed md:relative z-40 h-full w-80 bg-retro-dark border-r border-retro-sand/10
+                fixed md:relative z-40 h-full w-full md:w-2/3 bg-retro-dark border-r border-retro-sand/10
                 transition-transform duration-300 ease-in-out
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
             `}>
@@ -292,38 +292,40 @@ function PlannerPage() {
                 />
             )}
 
-            {/* Main Content (Right) */}
-            <main className="flex-1 flex flex-col h-full relative">
-                {/* Top Bar / Header */}
-                <header className="h-12 border-b border-retro-sand/20 bg-retro-dark flex items-center justify-between px-4 z-30">
-                    <h1 className="text-retro-sand font-display text-lg tracking-widest">
-                        TACTICAL MAP //{' '}
-                        <span className="text-retro-orange">{mapData ? mapData.name : 'NO SIGNAL'}</span>
-                    </h1>
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={toggleAccessibility}
-                            className="text-xs font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 px-2 py-1"
-                        >
-                            {accessibilityMode ? '[A11Y: ON]' : '[A11Y: OFF]'}
-                        </button>
-                        <button
-                            onClick={() => setActiveEditor("RECIPE")}
-                            className="text-xs font-mono text-retro-sand-dim hover:text-retro-orange border border-retro-sand/20 px-2 py-1"
-                        >
-                            🔨 CRAFTING
-                        </button>
-                        <button
-                            onClick={() => setActiveEditor("MAP")}
-                            className="text-xs font-mono text-retro-sand-dim hover:text-retro-orange border border-retro-sand/20 px-2 py-1"
-                        >
-                            🔧 EDITOR
-                        </button>
-                    </div>
-                </header>
+            {/* Main Content (Right) - Reduced to 1/3 width */}
+            <main className="flex-1 md:w-1/3 flex flex-col h-full relative border-l border-retro-sand/20">
+                {/* Top Half: Info/HUD */}
+                <div className="h-1/2 border-b border-retro-sand/20 bg-retro-dark flex flex-col">
+                     {/* Top Bar / Header */}
+                    <header className="h-12 border-b border-retro-sand/20 bg-retro-dark flex items-center justify-between px-4 z-30 flex-shrink-0">
+                        <h1 className="text-retro-sand font-display text-lg tracking-widest truncate">
+                            TACTICAL MAP //{' '}
+                            <span className="text-retro-orange">{mapData ? mapData.name : 'NO SIGNAL'}</span>
+                        </h1>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={toggleAccessibility}
+                                className="text-[10px] font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 px-1 py-1"
+                            >
+                                {accessibilityMode ? '[A11Y]' : '[OFF]'}
+                            </button>
+                            <button
+                                onClick={() => setActiveEditor("MAP")}
+                                className="text-[10px] font-mono text-retro-sand-dim hover:text-retro-orange border border-retro-sand/20 px-1 py-1"
+                            >
+                                🔧 EDITOR
+                            </button>
+                        </div>
+                    </header>
 
-                {/* Map Viewport */}
-                <div className="flex-1 relative bg-retro-black overflow-hidden">
+                    {/* Data Display */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+                        <DataHUD stats={stats} activeProfile={routingProfile} hoveredProfile={null} />
+                    </div>
+                </div>
+
+                {/* Bottom Half: Map Viewport */}
+                <div className="h-1/2 relative bg-retro-black overflow-hidden">
                     {mapData ? (
                         <div className="w-full h-full">
                             <MapComponent
@@ -340,15 +342,10 @@ function PlannerPage() {
                             />
                         </div>
                     ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-retro-sand-dim/20 font-display text-4xl uppercase tracking-widest select-none">
+                        <div className="absolute inset-0 flex items-center justify-center text-retro-sand-dim/20 font-display text-2xl uppercase tracking-widest select-none text-center p-4">
                             Awaiting Coordinates
                         </div>
                     )}
-                </div>
-
-                {/* Bottom HUD */}
-                <div className="h-32 flex-shrink-0 z-40">
-                    <DataHUD stats={stats} activeProfile={routingProfile} hoveredProfile={null} />
                 </div>
             </main>
 

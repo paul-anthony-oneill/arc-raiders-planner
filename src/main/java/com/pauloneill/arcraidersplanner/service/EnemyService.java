@@ -27,7 +27,6 @@ public class EnemyService {
      * required loot drops
      */
     private static final Set<String> INCLUDED_ENEMIES = Set.of(
-            "queen",
             "leaper",
             "rocketeer",
             "sentinel",

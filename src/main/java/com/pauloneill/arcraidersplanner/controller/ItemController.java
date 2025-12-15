@@ -69,7 +69,16 @@ public class ItemController {
             items = itemService.getAllItems();
         }
 
-        return dtoMapper.toItemDtos(items);
+        List<ItemDto> dtos = dtoMapper.toItemDtos(items);
+        java.util.Set<String> craftableIds = new java.util.HashSet<>(itemService.getCraftableMetaforgeIds());
+
+        dtos.forEach(dto -> {
+            if (dto.getMetaforgeId() != null && craftableIds.contains(dto.getMetaforgeId())) {
+                dto.setHasRecipe(true);
+            }
+        });
+
+        return dtos;
     }
 
     /**
@@ -183,5 +192,14 @@ public class ItemController {
             )
             @RequestBody PlannerRequestDto request) {
         return plannerService.generateRoute(request);
+    }
+
+    @Operation(
+            summary = "Get recipe chain for an item",
+            description = "Returns the immediate recipe ingredients and identifies prerequisites for recursive crafting logic."
+    )
+    @GetMapping("/{id}/recipe-chain")
+    public com.pauloneill.arcraidersplanner.dto.RecipeChainDto getRecipeChain(@PathVariable Long id) {
+        return itemService.getRecipeChain(id);
     }
 }

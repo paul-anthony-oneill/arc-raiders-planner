@@ -25,6 +25,7 @@ public class DtoMapper {
 
         ItemDto dto = new ItemDto();
         dto.setId(item.getId());
+        dto.setMetaforgeId(item.getMetaforgeId());
         dto.setName(item.getName());
         dto.setDescription(item.getDescription());
         dto.setRarity(item.getRarity());

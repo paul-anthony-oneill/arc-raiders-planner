@@ -1,6 +1,6 @@
 import type { Item } from '../types'
 
-const API_URL = 'http://localhost:8080/api/items'
+const API_URL = '/api/items'
 
 export const itemApi = {
   /**
@@ -44,4 +44,26 @@ export const itemApi = {
     }
     return response.json()
   },
+
+  /**
+   * Get recipe chain for an item (prerequisites and recursive crafting info).
+   *
+   * @param itemId The item ID
+   * @returns RecipeChain object
+   */
+  getRecipeChain: async (itemId: number): Promise<import('../types').RecipeChain | null> => {
+    const response = await fetch(`${API_URL}/${itemId}/recipe-chain`)
+    if (!response.ok) {
+        // Return null for 404 (no recipe) or throw?
+        // Let's assume 200 with empty body or null if not found
+        // Backend returns null if no recipe.
+        if (response.status === 204 || response.status === 404) {
+            return null as any;
+        }
+        throw new Error(`Failed to fetch recipe chain: ${response.statusText}`)
+    }
+    // Handle null response content
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
+  }
 }

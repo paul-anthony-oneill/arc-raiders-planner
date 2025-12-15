@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Circle, Popup } from 'react-leaflet'
+import { ImageOverlay, MapContainer, Marker, Polygon, Polyline, Circle, Popup, ZoomControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Area, Waypoint, EnemySpawn, RoutingProfile } from './types'
 import L from 'leaflet'
@@ -210,8 +210,10 @@ const MapComponent: React.FC<MapProps> = ({
                 bounds={bounds}
                 maxBounds={maxBounds}
                 maxBoundsViscosity={0.8}
+                zoomControl={false}
                 style={{ height: '100%', width: '100%', backgroundColor: '#1a1a1a' }}
             >
+                <ZoomControl position="bottomright" />
                 <ImageOverlay url={getMapImageUrl(mapName)} bounds={bounds} attribution="&copy; Embark Studios" />
 
                 {/* Render danger zones (bottom layer) */}

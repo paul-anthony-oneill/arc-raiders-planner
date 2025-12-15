@@ -12,6 +12,7 @@ import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.LootAreaRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
 import com.pauloneill.arcraidersplanner.repository.RecipeRepository;
+import com.pauloneill.arcraidersplanner.repository.RecipeIngredientRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -27,6 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set; // NEW
+import java.util.HashSet; // NEW
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,6 +42,7 @@ public class MetaforgeSyncService {
     private final MapMarkerRepository markerRepository;
     private final GameMapRepository gameMapRepository;
     private final RecipeRepository recipeRepository;
+    private final RecipeIngredientRepository recipeIngredientRepository;
     private final CoordinateCalibrationService calibrationService;
     private final ObjectMapper objectMapper;
     private final MarkerGroupingService markerGroupingService; // NEW
@@ -49,6 +53,7 @@ public class MetaforgeSyncService {
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
             LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository,
             GameMapRepository gameMapRepository, RecipeRepository recipeRepository,
+            RecipeIngredientRepository recipeIngredientRepository,
             CoordinateCalibrationService calibrationService, ObjectMapper objectMapper,
             MarkerGroupingService markerGroupingService) { // NEW
         this.restClient = restClient;
@@ -57,6 +62,7 @@ public class MetaforgeSyncService {
         this.markerRepository = markerRepository;
         this.gameMapRepository = gameMapRepository;
         this.recipeRepository = recipeRepository;
+        this.recipeIngredientRepository = recipeIngredientRepository;
         this.calibrationService = calibrationService;
         this.objectMapper = objectMapper;
         this.markerGroupingService = markerGroupingService; // NEW
@@ -226,7 +232,8 @@ public class MetaforgeSyncService {
             Recipe recipe;
             if (existingRecipe.isPresent()) {
                 recipe = existingRecipe.get();
-                recipe.getIngredients().clear();
+                // Clear existing ingredients to ensure orphanRemoval triggers deletion
+                recipe.getIngredients().clear(); 
             } else {
                 recipe = new Recipe();
                 recipe.setMetaforgeItemId(metaforgeId);
@@ -237,22 +244,29 @@ public class MetaforgeSyncService {
             recipe.setType(RecipeType.WORKBENCH_UPGRADE);
             recipe.setIsRecyclable(false);
             
-            int ingredientsAdded = 0;
+            // Use a map to aggregate quantities for duplicate items in requirements
+            Map<Item, Integer> aggregatedRequirements = new HashMap<>();
             for (HideoutUpgradeDto.Requirement req : level.requirementItemIds()) {
                 Optional<Item> itemOpt = itemRepository.findByMetaforgeId(req.itemId());
                 
                 if (itemOpt.isPresent()) {
-                    RecipeIngredient ingredient = new RecipeIngredient();
-                    ingredient.setItem(itemOpt.get());
-                    ingredient.setQuantity(req.quantity());
-                    recipe.addIngredient(ingredient);
-                    ingredientsAdded++;
+                    Item ingredientItem = itemOpt.get();
+                    aggregatedRequirements.merge(ingredientItem, req.quantity(), Integer::sum);
                 } else {
                     log.warn("Missing ingredient for upgrade '{}': {} (Metaforge ID)", recipeName, req.itemId());
                 }
             }
+
+            // Create RecipeIngredient objects from aggregated requirements and add to the recipe's managed collection
+            for (Map.Entry<Item, Integer> entry : aggregatedRequirements.entrySet()) {
+                RecipeIngredient ingredient = new RecipeIngredient();
+                ingredient.setItem(entry.getKey());
+                ingredient.setQuantity(entry.getValue());
+                recipe.addIngredient(ingredient); 
+            }
             
-            if (ingredientsAdded > 0) {
+            // Save the recipe if there are any ingredients (either new or updated existing ones)
+            if (!aggregatedRequirements.isEmpty()) {
                 recipeRepository.save(recipe);
             }
         }

@@ -1,6 +1,6 @@
 import type { Recipe } from "../types";
 
-const API_URL = "http://localhost:8080/api/recipes";
+const API_URL = "/api/recipes";
 
 export const recipeApi = {
   getAllRecipes: async (): Promise<Recipe[]> => {

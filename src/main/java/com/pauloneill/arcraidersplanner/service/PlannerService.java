@@ -68,6 +68,9 @@ public class PlannerService {
         }
         allTargetEnemyTypes.addAll(targetDroppedByEnemies);
 
+        // Filter out "queen" as it's too difficult for general farming
+        allTargetEnemyTypes.removeIf(type -> "queen".equalsIgnoreCase(type));
+
         // Step 3: Get all spawns of target enemy types
         List<MapMarker> allEnemySpawns = Collections.emptyList();
         if (!allTargetEnemyTypes.isEmpty()) {
