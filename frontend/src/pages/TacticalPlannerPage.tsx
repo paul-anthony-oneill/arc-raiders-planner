@@ -1,15 +1,18 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { useTargetSelection } from '../hooks/useTargetSelection'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { LeftPanel } from '../components/LeftPanel'
 import { CenterPanel } from '../components/CenterPanel'
 import { MinimizedMapView } from '../components/MinimizedMapView'
-import { MaximizedMapView } from '../components/MaximizedMapView'
+import { MapSkeleton } from '../components/LoadingSkeleton'
 import { Tooltip } from '../components/Tooltip'
 import { itemApi } from '../api/itemApi'
 import { mapApi } from '../api/mapApi'
 import { plannerApi } from '../api/plannerApi'
 import type { Item, PlannerResponse, Area, PlannerRequest } from '../types'
+
+// Lazy load heavy map visualization component
+const MaximizedMapView = lazy(() => import('../components/MaximizedMapView').then(m => ({ default: m.MaximizedMapView })))
 
 /**
  * Unified Tactical Planner Interface
@@ -310,12 +313,14 @@ export const TacticalPlannerPage: React.FC = () => {
               hasTargets={priorityTargets.length > 0}
             />
           ) : (
-            <MaximizedMapView
-              route={calculatedRoute}
-              onMinimize={handleMinimize}
-              routingProfile={routingProfile}
-              onRecalculate={handleCalculateRoute}
-            />
+            <Suspense fallback={<MapSkeleton />}>
+              <MaximizedMapView
+                route={calculatedRoute}
+                onMinimize={handleMinimize}
+                routingProfile={routingProfile}
+                onRecalculate={handleCalculateRoute}
+              />
+            </Suspense>
           )}
         </div>
       </div>
