@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { TargetCard } from './TargetCard'
-import { useTargetSelection } from '../hooks/useTargetSelection'
+import { FilterPanel, type FilterState } from './FilterPanel'
 import { itemApi } from '../api/itemApi'
 import { recipeApi } from '../api/recipeApi'
 import type { Item, Recipe, TargetSelection } from '../types'
@@ -9,29 +9,43 @@ type CategoryTab = 'ALL' | 'ITEMS' | 'ENEMIES' | 'CONTAINERS' | 'RECIPES'
 
 interface LeftPanelProps {
   onItemSelect?: (item: Item) => void
+  priorityTargets: TargetSelection[]
+  ongoingTargets: TargetSelection[]
+  addPriorityTarget: (target: TargetSelection) => void
+  removePriorityTarget: (id: string | number, type: TargetSelection['type']) => void
+  addOngoingTarget: (target: TargetSelection) => void
+  removeOngoingTarget: (id: string | number, type: TargetSelection['type']) => void
+  priorityCount: number
+  ongoingCount: number
 }
 
 /**
  * Left Panel - Objective Selection
  * WHY: Unified list of all selectable targets with category filtering
  */
-export const LeftPanel: React.FC<LeftPanelProps> = ({ onItemSelect }) => {
-  const {
-    priorityTargets,
-    ongoingTargets,
-    addPriorityTarget,
-    removePriorityTarget,
-    addOngoingTarget,
-    removeOngoingTarget,
-    priorityCount,
-    ongoingCount,
-  } = useTargetSelection()
-
+export const LeftPanel: React.FC<LeftPanelProps> = ({
+  onItemSelect,
+  priorityTargets,
+  ongoingTargets,
+  addPriorityTarget,
+  removePriorityTarget,
+  addOngoingTarget,
+  removeOngoingTarget,
+  priorityCount,
+  ongoingCount,
+}) => {
   const [activeTab, setActiveTab] = useState<CategoryTab>('ALL')
   const [searchTerm, setSearchTerm] = useState('')
   const [items, setItems] = useState<Item[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
+  const [filters, setFilters] = useState<FilterState>({
+    rarities: [],
+    itemTypes: [],
+    lootTypes: [],
+    showOnlyTargeted: false,
+  })
 
   // Load data on mount
   useEffect(() => {
@@ -44,7 +58,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ onItemSelect }) => {
         setRecipes(recipesData)
         setLoading(false)
       })
-      .catch(console.error)
+      .catch(err => {
+        console.error('Failed to load objectives:', err)
+        setLoading(false) // Set loading to false even on error
+      })
   }, [])
 
   // Check if a target is selected
@@ -82,23 +99,77 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ onItemSelect }) => {
     }
   }
 
-  // Filter items based on active tab and search
-  const filteredItems = items.filter(item => {
-    if (activeTab !== 'ALL' && activeTab !== 'ITEMS') return false
-    if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) return false
-    return true
-  })
+  // Calculate available filter options
+  const availableRarities = useMemo(() =>
+    [...new Set(items.map(i => i.rarity))].filter(Boolean).sort(),
+    [items]
+  )
 
-  const filteredRecipes = recipes.filter(recipe => {
-    if (activeTab !== 'ALL' && activeTab !== 'RECIPES') return false
-    if (searchTerm && !recipe.name.toLowerCase().includes(searchTerm.toLowerCase())) return false
-    return true
-  })
+  const availableItemTypes = useMemo(() =>
+    [...new Set(items.map(i => i.itemType))].filter(Boolean).sort(),
+    [items]
+  )
+
+  const availableLootTypes = useMemo(() =>
+    [...new Set(items.map(i => i.lootType))].filter(Boolean).sort() as string[],
+    [items]
+  )
+
+  // Filter items based on active tab, search, and filters
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      // Tab filter
+      if (activeTab !== 'ALL' && activeTab !== 'ITEMS') return false
+
+      // Search filter
+      if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) return false
+
+      // Rarity filter
+      if (filters.rarities.length > 0 && !filters.rarities.includes(item.rarity)) return false
+
+      // Item type filter
+      if (filters.itemTypes.length > 0 && !filters.itemTypes.includes(item.itemType)) return false
+
+      // Loot type filter
+      if (filters.lootTypes.length > 0 && item.lootType && !filters.lootTypes.includes(item.lootType)) return false
+
+      // Show only targeted filter
+      if (filters.showOnlyTargeted) {
+        const isSelected = priorityTargets.some(t => t.id === item.id && t.type === 'ITEM') ||
+                           ongoingTargets.some(t => t.id === item.id && t.type === 'ITEM')
+        if (!isSelected) return false
+      }
+
+      return true
+    })
+  }, [items, activeTab, searchTerm, filters, priorityTargets, ongoingTargets])
+
+  const filteredRecipes = useMemo(() => {
+    return recipes.filter(recipe => {
+      // Tab filter
+      if (activeTab !== 'ALL' && activeTab !== 'RECIPES') return false
+
+      // Search filter
+      if (searchTerm && !recipe.name.toLowerCase().includes(searchTerm.toLowerCase())) return false
+
+      // Show only targeted filter
+      if (filters.showOnlyTargeted) {
+        const isSelected = priorityTargets.some(t => t.id === recipe.metaforgeItemId && t.type === 'RECIPE') ||
+                           ongoingTargets.some(t => t.id === recipe.metaforgeItemId && t.type === 'RECIPE')
+        if (!isSelected) return false
+      }
+
+      return true
+    })
+  }, [recipes, activeTab, searchTerm, filters, priorityTargets, ongoingTargets])
+
+  // Count active filters
+  const activeFilterCount = filters.rarities.length + filters.itemTypes.length + filters.lootTypes.length + (filters.showOnlyTargeted ? 1 : 0)
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Loading objectives...</p>
+        <p className="text-retro-sand-dim font-mono">Loading objectives...</p>
       </div>
     )
   }
@@ -106,10 +177,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ onItemSelect }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="mb-4">
-        <h2 className="text-xl font-bold text-white mb-2">Objectives</h2>
-        <p className="text-xs text-gray-400">
-          Priority: {priorityCount}/5 | Ongoing: {ongoingCount}/10
+      <div className="mb-4 border-b border-retro-sand/20 pb-4">
+        <h2 className="text-xl font-display font-bold text-retro-orange text-glow uppercase tracking-widest mb-2">Objectives</h2>
+        <p className="text-xs text-retro-sand-dim font-mono">
+          Priority: <span className="text-retro-orange">{priorityCount}/5</span> | Ongoing: <span className="text-retro-sand">{ongoingCount}/10</span>
         </p>
       </div>
 
@@ -119,10 +190,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ onItemSelect }) => {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-sm font-mono font-medium whitespace-nowrap transition-colors border ${
               activeTab === tab
-                ? 'bg-orange-500 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                ? 'bg-retro-orange text-retro-black border-retro-orange'
+                : 'bg-retro-black text-retro-sand-dim border-retro-sand/20 hover:border-retro-orange hover:text-retro-sand'
             }`}
           >
             {tab}
@@ -136,8 +207,37 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ onItemSelect }) => {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         placeholder="Search objectives..."
-        className="w-full px-3 py-2 mb-4 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-orange-500"
+        className="w-full px-3 py-2 mb-3 bg-retro-black text-retro-sand font-mono border border-retro-sand/20 focus:outline-none focus:border-retro-orange transition-colors placeholder-retro-sand-dim"
       />
+
+      {/* Filter Panel Toggle */}
+      <button
+        onClick={() => setFiltersExpanded(!filtersExpanded)}
+        className="w-full flex items-center justify-between px-3 py-2 mb-3 bg-retro-black border border-retro-sand/20 hover:border-retro-orange transition-colors"
+      >
+        <span className="text-sm font-mono font-semibold text-retro-sand">
+          Filters {activeFilterCount > 0 && <span className="text-retro-orange">({activeFilterCount})</span>}
+        </span>
+        <svg
+          className={`w-4 h-4 transition-transform text-retro-sand ${filtersExpanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Filter Panel */}
+      {filtersExpanded && (
+        <FilterPanel
+          filters={filters}
+          onFilterChange={setFilters}
+          availableRarities={availableRarities}
+          availableItemTypes={availableItemTypes}
+          availableLootTypes={availableLootTypes}
+        />
+      )}
 
       {/* Objective List */}
       <div className="flex-1 overflow-y-auto space-y-2">
@@ -195,7 +295,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ onItemSelect }) => {
         })}
 
         {filteredItems.length === 0 && filteredRecipes.length === 0 && (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center text-retro-sand-dim font-mono py-8">
             No objectives found
           </div>
         )}
