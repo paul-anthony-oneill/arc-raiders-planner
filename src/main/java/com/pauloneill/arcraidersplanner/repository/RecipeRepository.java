@@ -41,4 +41,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
      */
     @Query("SELECT DISTINCT r FROM Recipe r JOIN r.ingredients i WHERE i.item.id = :itemId")
     List<Recipe> findRecipesUsingItem(@Param("itemId") Long itemId);
+
+    @Query("SELECT r.metaforgeItemId FROM Recipe r")
+    List<String> findAllMetaforgeItemIdsWithRecipes();
 }

@@ -65,4 +65,52 @@ public class ItemServiceImpl implements ItemService {
 
         return dto;
     }
+    @Override
+    public List<String> getCraftableMetaforgeIds() {
+        return recipeRepository.findAllMetaforgeItemIdsWithRecipes();
+    }
+    @Override
+    public com.pauloneill.arcraidersplanner.dto.RecipeChainDto getRecipeChain(Long itemId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Item not found"));
+
+        if (item.getMetaforgeId() == null) return null;
+
+        Recipe recipe = recipeRepository.findByMetaforgeItemId(item.getMetaforgeId()).orElse(null);
+        if (recipe == null) return null;
+
+        List<com.pauloneill.arcraidersplanner.dto.RecipeChainDto.RecipeIngredientChainDto> ingredientDtos = recipe.getIngredients().stream()
+                .map(ing -> {
+                    Item ingItem = ing.getItem();
+                    // Check if this ingredient has a recipe
+                    Long ingRecipeId = null;
+                    if (ingItem.getMetaforgeId() != null) {
+                        ingRecipeId = recipeRepository.findByMetaforgeItemId(ingItem.getMetaforgeId())
+                                .map(Recipe::getId)
+                                .orElse(null);
+                    }
+
+                    // Prerequisite logic: Same ItemType AND has a recipe
+                    // E.g. Anvil IV (Upgrade) uses Anvil III (Upgrade) + Materials
+                    boolean isPrerequisite = ingItem.getItemType() != null
+                            && ingItem.getItemType().equals(item.getItemType())
+                            && ingRecipeId != null;
+
+                    return new com.pauloneill.arcraidersplanner.dto.RecipeChainDto.RecipeIngredientChainDto(
+                            ingItem.getId(),
+                            ingItem.getName(),
+                            ing.getQuantity(),
+                            isPrerequisite,
+                            ingRecipeId
+                    );
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+        return new com.pauloneill.arcraidersplanner.dto.RecipeChainDto(
+                item.getId(),
+                item.getName(),
+                recipe.getId(),
+                ingredientDtos
+        );
+    }
 }

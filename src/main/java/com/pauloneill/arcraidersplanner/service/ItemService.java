@@ -18,4 +18,8 @@ public interface ItemService {
      * @return ItemDto with crafting recipe, usage recipes, and drop sources
      */
     ItemDto getItemWithContext(Long itemId);
+
+    List<String> getCraftableMetaforgeIds();
+
+    com.pauloneill.arcraidersplanner.dto.RecipeChainDto getRecipeChain(Long itemId);
 }
