@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { TargetCard } from './TargetCard'
 import { FilterPanel, type FilterState } from './FilterPanel'
+import { ItemListSkeleton } from './LoadingSkeleton'
 import { itemApi } from '../api/itemApi'
 import { recipeApi } from '../api/recipeApi'
 import type { Item, Recipe, TargetSelection } from '../types'
@@ -168,8 +169,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-retro-sand-dim font-mono">Loading objectives...</p>
+      <div className="flex flex-col h-full">
+        <div className="mb-4">
+          <h2 className="text-retro-orange font-display text-sm uppercase tracking-wider">
+            OBJECTIVES
+          </h2>
+        </div>
+        <ItemListSkeleton />
       </div>
     )
   }

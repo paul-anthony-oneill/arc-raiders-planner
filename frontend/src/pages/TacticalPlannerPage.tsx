@@ -122,6 +122,9 @@ export const TacticalPlannerPage: React.FC = () => {
   // A11Y state
   const [accessibilityMode, setAccessibilityMode] = useState(false)
 
+  // Mobile panel state
+  const [activeMobilePanel, setActiveMobilePanel] = useState<'objectives' | 'details' | 'map'>('objectives')
+
   const toggleAccessibility = () => {
     setAccessibilityMode(!accessibilityMode)
     document.body.classList.toggle('accessibility-mode')
@@ -134,22 +137,65 @@ export const TacticalPlannerPage: React.FC = () => {
 
       {/* Top Header */}
       <header className="h-12 border-b border-retro-sand/20 bg-retro-dark flex items-center justify-between px-4 z-30">
-        <h1 className="text-retro-sand font-display text-lg tracking-widest uppercase">
-          TACTICAL PLANNER //{' '}
+        <h1 className="text-retro-sand font-display text-sm md:text-lg tracking-widest uppercase truncate">
+          <span className="hidden md:inline">TACTICAL PLANNER // </span>
           <span className="text-retro-orange text-glow">{selectedMap || 'NO SIGNAL'}</span>
         </h1>
         <button
           onClick={toggleAccessibility}
           className="text-xs font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 hover:border-retro-orange px-2 py-1 transition-colors"
+          aria-label={accessibilityMode ? 'Disable accessibility mode' : 'Enable accessibility mode'}
         >
           {accessibilityMode ? '[A11Y: ON]' : '[A11Y: OFF]'}
         </button>
       </header>
 
-      {/* Main Content Grid */}
-      <div className="flex-1 grid grid-cols-[300px_1fr_2fr] gap-4 p-4 overflow-hidden">
-        {/* Left Panel - Always visible */}
-        <div className="bg-retro-dark rounded-lg p-4 overflow-y-auto border border-retro-sand/20 relative">
+      {/* Mobile Navigation Tabs (visible only on mobile) */}
+      <nav className="md:hidden flex border-b border-retro-sand/20 bg-retro-dark z-20" role="tablist">
+        <button
+          role="tab"
+          aria-selected={activeMobilePanel === 'objectives'}
+          onClick={() => setActiveMobilePanel('objectives')}
+          className={`flex-1 py-2 font-mono text-xs uppercase transition-colors ${
+            activeMobilePanel === 'objectives'
+              ? 'bg-retro-orange text-retro-dark border-b-2 border-retro-orange'
+              : 'text-retro-sand-dim hover:text-retro-sand'
+          }`}
+        >
+          Objectives
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeMobilePanel === 'details'}
+          onClick={() => setActiveMobilePanel('details')}
+          className={`flex-1 py-2 font-mono text-xs uppercase transition-colors ${
+            activeMobilePanel === 'details'
+              ? 'bg-retro-orange text-retro-dark border-b-2 border-retro-orange'
+              : 'text-retro-sand-dim hover:text-retro-sand'
+          }`}
+        >
+          Details
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeMobilePanel === 'map'}
+          onClick={() => setActiveMobilePanel('map')}
+          className={`flex-1 py-2 font-mono text-xs uppercase transition-colors ${
+            activeMobilePanel === 'map'
+              ? 'bg-retro-orange text-retro-dark border-b-2 border-retro-orange'
+              : 'text-retro-sand-dim hover:text-retro-sand'
+          }`}
+        >
+          Map
+        </button>
+      </nav>
+
+      {/* Main Content Grid - Responsive Layout */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-[300px_1fr] lg:grid-cols-[300px_1fr_2fr] gap-4 p-2 md:p-4 overflow-hidden">
+        {/* Left Panel - Objectives (Mobile: tab-controlled, Desktop: always visible) */}
+        <div className={`bg-retro-dark rounded-lg p-4 overflow-y-auto border border-retro-sand/20 relative ${
+          activeMobilePanel === 'objectives' ? 'block' : 'hidden md:block'
+        }`} role="tabpanel" aria-labelledby="objectives-tab">
           <div className="absolute inset-0 crt-overlay pointer-events-none"></div>
           <div className="relative z-10">
             <LeftPanel
@@ -166,9 +212,11 @@ export const TacticalPlannerPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Panel - Hidden in PLANNING mode */}
+        {/* Center Panel - Details (Mobile: tab-controlled, Desktop: hidden in PLANNING mode) */}
         {uiMode === 'SELECTION' && (
-          <div className="bg-retro-dark rounded-lg p-4 overflow-y-auto border border-retro-sand/20 relative">
+          <div className={`bg-retro-dark rounded-lg p-4 overflow-y-auto border border-retro-sand/20 relative ${
+            activeMobilePanel === 'details' ? 'block' : 'hidden lg:block'
+          }`} role="tabpanel" aria-labelledby="details-tab">
             <div className="absolute inset-0 crt-overlay pointer-events-none"></div>
             <div className="relative z-10">
               <CenterPanel item={selectedItem} />
@@ -176,10 +224,12 @@ export const TacticalPlannerPage: React.FC = () => {
           </div>
         )}
 
-        {/* Right Panel - Expands in PLANNING mode */}
+        {/* Right Panel - Map (Mobile: tab-controlled, Desktop: expands in PLANNING mode) */}
         <div className={`bg-retro-dark rounded-lg overflow-hidden relative ${
-          uiMode === 'PLANNING' ? 'col-span-2' : ''
-        }`}>
+          uiMode === 'PLANNING' ? 'md:col-span-2 lg:col-span-2' : ''
+        } ${
+          activeMobilePanel === 'map' ? 'block' : 'hidden md:block'
+        }`} role="tabpanel" aria-labelledby="map-tab">
           {/* Error notification */}
           {error && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-retro-red text-retro-sand font-mono px-6 py-3 border-2 border-retro-red shadow-lg">
