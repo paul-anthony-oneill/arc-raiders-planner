@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useTargetSelection } from '../hooks/useTargetSelection'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { LeftPanel } from '../components/LeftPanel'
 import { CenterPanel } from '../components/CenterPanel'
 import { MinimizedMapView } from '../components/MinimizedMapView'
 import { MaximizedMapView } from '../components/MaximizedMapView'
+import { Tooltip } from '../components/Tooltip'
 import { itemApi } from '../api/itemApi'
 import { mapApi } from '../api/mapApi'
 import { plannerApi } from '../api/plannerApi'
@@ -130,6 +132,46 @@ export const TacticalPlannerPage: React.FC = () => {
     document.body.classList.toggle('accessibility-mode')
   }
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'Escape',
+      action: () => {
+        if (uiMode === 'PLANNING') {
+          handleMinimize()
+        } else if (error) {
+          setError(null)
+        }
+      },
+      description: 'Close route or dismiss error'
+    },
+    {
+      key: 'Enter',
+      ctrl: true,
+      action: () => {
+        if (priorityTargets.length > 0 && uiMode === 'SELECTION') {
+          handleCalculateRoute()
+        }
+      },
+      description: 'Calculate route'
+    },
+    {
+      key: 'a',
+      ctrl: true,
+      action: () => {
+        toggleAccessibility()
+      },
+      description: 'Toggle accessibility mode'
+    }
+  ])
+
+  // Auto-switch to map tab on mobile when route is calculated
+  useEffect(() => {
+    if (uiMode === 'PLANNING') {
+      setActiveMobilePanel('map')
+    }
+  }, [uiMode])
+
   return (
     <div className="fixed inset-0 w-full h-full bg-retro-bg overflow-hidden flex flex-col">
       {/* Global CRT Overlay */}
@@ -141,13 +183,18 @@ export const TacticalPlannerPage: React.FC = () => {
           <span className="hidden md:inline">TACTICAL PLANNER // </span>
           <span className="text-retro-orange text-glow">{selectedMap || 'NO SIGNAL'}</span>
         </h1>
-        <button
-          onClick={toggleAccessibility}
-          className="text-xs font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 hover:border-retro-orange px-2 py-1 transition-colors"
-          aria-label={accessibilityMode ? 'Disable accessibility mode' : 'Enable accessibility mode'}
+        <Tooltip
+          content={`Accessibility mode ${accessibilityMode ? 'enabled' : 'disabled'}. Removes CRT effects and uses system fonts. Shortcut: Ctrl+A`}
+          position="bottom"
         >
-          {accessibilityMode ? '[A11Y: ON]' : '[A11Y: OFF]'}
-        </button>
+          <button
+            onClick={toggleAccessibility}
+            className="text-xs font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 hover:border-retro-orange px-2 py-1 transition-colors"
+            aria-label={accessibilityMode ? 'Disable accessibility mode' : 'Enable accessibility mode'}
+          >
+            {accessibilityMode ? '[A11Y: ON]' : '[A11Y: OFF]'}
+          </button>
+        </Tooltip>
       </header>
 
       {/* Mobile Navigation Tabs (visible only on mobile) */}
