@@ -19,6 +19,22 @@ export interface Item {
   droppedBy?: string[];           // Enemy IDs that drop this item
   usedInRecipes?: Recipe[];   // Recipes that use this item as ingredient
   craftingRecipe?: Recipe;        // Recipe to craft this item (if craftable)
+  hasRecipe?: boolean;            // Whether this item has a crafting recipe (for grid view)
+}
+
+export interface RecipeIngredientChain {
+  itemId: number;
+  itemName: string;
+  quantity: number;
+  isPrerequisite: boolean;
+  recipeId: number | null;
+}
+
+export interface RecipeChain {
+  itemId: number;
+  itemName: string;
+  recipeId: number;
+  ingredients: RecipeIngredientChain[];
 }
 
 // Represents an enemy type for selection (not a specific spawn)
