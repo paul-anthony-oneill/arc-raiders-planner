@@ -6,6 +6,7 @@ import { CenterPanel } from '../components/CenterPanel'
 import { MinimizedMapView } from '../components/MinimizedMapView'
 import { MapSkeleton } from '../components/LoadingSkeleton'
 import { Tooltip } from '../components/Tooltip'
+import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal'
 import { itemApi } from '../api/itemApi'
 import { mapApi } from '../api/mapApi'
 import { plannerApi } from '../api/plannerApi'
@@ -46,6 +47,7 @@ export const TacticalPlannerPage: React.FC = () => {
   const [calculatedRoute, setCalculatedRoute] = useState<PlannerResponse | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false)
 
   // Handle item selection from LeftPanel
   const handleItemSelect = useCallback(async (item: Item) => {
@@ -138,9 +140,19 @@ export const TacticalPlannerPage: React.FC = () => {
   // Keyboard shortcuts
   useKeyboardShortcuts([
     {
+      key: '?',
+      shift: true,
+      action: () => {
+        setShowShortcutsModal(true)
+      },
+      description: 'Show keyboard shortcuts help'
+    },
+    {
       key: 'Escape',
       action: () => {
-        if (uiMode === 'PLANNING') {
+        if (showShortcutsModal) {
+          setShowShortcutsModal(false)
+        } else if (uiMode === 'PLANNING') {
           handleMinimize()
         } else if (error) {
           setError(null)
@@ -166,7 +178,7 @@ export const TacticalPlannerPage: React.FC = () => {
       },
       description: 'Toggle accessibility mode'
     }
-  ])
+  ], !showShortcutsModal)
 
   // Auto-switch to map tab on mobile when route is calculated
   useEffect(() => {
@@ -186,18 +198,29 @@ export const TacticalPlannerPage: React.FC = () => {
           <span className="hidden md:inline">TACTICAL PLANNER // </span>
           <span className="text-retro-orange text-glow">{selectedMap || 'NO SIGNAL'}</span>
         </h1>
-        <Tooltip
-          content={`Accessibility mode ${accessibilityMode ? 'enabled' : 'disabled'}. Removes CRT effects and uses system fonts. Shortcut: Ctrl+A`}
-          position="bottom"
-        >
-          <button
-            onClick={toggleAccessibility}
-            className="text-xs font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 hover:border-retro-orange px-2 py-1 transition-colors"
-            aria-label={accessibilityMode ? 'Disable accessibility mode' : 'Enable accessibility mode'}
+        <div className="flex items-center gap-2">
+          <Tooltip content="Keyboard shortcuts (Press ? to open)" position="bottom">
+            <button
+              onClick={() => setShowShortcutsModal(true)}
+              className="text-xs font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 hover:border-retro-orange px-2 py-1 transition-colors"
+              aria-label="Show keyboard shortcuts"
+            >
+              [?]
+            </button>
+          </Tooltip>
+          <Tooltip
+            content={`Accessibility mode ${accessibilityMode ? 'enabled' : 'disabled'}. Removes CRT effects and uses system fonts. Shortcut: Ctrl+A`}
+            position="bottom"
           >
-            {accessibilityMode ? '[A11Y: ON]' : '[A11Y: OFF]'}
-          </button>
-        </Tooltip>
+            <button
+              onClick={toggleAccessibility}
+              className="text-xs font-mono text-retro-sand-dim hover:text-retro-sand border border-retro-sand/20 hover:border-retro-orange px-2 py-1 transition-colors"
+              aria-label={accessibilityMode ? 'Disable accessibility mode' : 'Enable accessibility mode'}
+            >
+              {accessibilityMode ? '[A11Y: ON]' : '[A11Y: OFF]'}
+            </button>
+          </Tooltip>
+        </div>
       </header>
 
       {/* Mobile Navigation Tabs (visible only on mobile) */}
@@ -324,6 +347,12 @@ export const TacticalPlannerPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Keyboard Shortcuts Help Modal */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+      />
     </div>
   )
 }

@@ -44,7 +44,7 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[], enabled = tr
  * Focus trap hook for modals and dialogs
  * WHY: Prevents focus from escaping modals, meeting WCAG accessibility requirements
  */
-export const useFocusTrap = (containerRef: React.RefObject<HTMLElement>, active: boolean) => {
+export const useFocusTrap = (containerRef: React.RefObject<HTMLElement | null>, active: boolean) => {
   useEffect(() => {
     if (!active || !containerRef.current) return
 
