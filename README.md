@@ -13,16 +13,18 @@
 
 ## 📸 Screenshots
 
-> **Note:** Add screenshots here showing the tactical planner interface, route visualization, and key features.
 
 <details>
-<summary>🖼️ Screenshot Placeholders (Click to expand)</summary>
+<summary>🖼️ Screenshots (Click to expand)</summary>
 
 - **Main Tactical Planner Interface** - 3-panel layout with item selection, details, and map
+- <img width="1662" height="1023" alt="image" src="https://github.com/user-attachments/assets/24e67a69-6c4b-41dc-894d-49fc16df2546" />
 - **Route Calculation** - Optimized multi-waypoint routes with different profiles
+- <img width="1360" height="943" alt="image" src="https://github.com/user-attachments/assets/d0e30cba-2024-4c11-8fd9-9fa3a6cff2b6" />
 - **Container Grouping Visualization** - DBSCAN clustering of nearby container spawns
-- **Zone Highlighting** - Visual feedback showing item spawn locations
 - **Keyboard Shortcuts Modal** - Accessibility features and power-user shortcuts
+- <img width="688" height="639" alt="image" src="https://github.com/user-attachments/assets/788e25b1-ea67-496f-97b2-d43857251e7f" />
+
 
 </details>
 
@@ -294,7 +296,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Paul O'Neill**
 
 - GitHub: [@paul-anthony-oneill](https://github.com/paul-anthony-oneill)
-- Portfolio: [Add your portfolio link]
 
 ---
 
