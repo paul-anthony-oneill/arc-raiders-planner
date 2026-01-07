@@ -1,5 +1,7 @@
 package com.pauloneill.arcraidersplanner.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pauloneill.arcraidersplanner.dto.HideoutUpgradeDto;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDataResponse;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeItemDto;
 import com.pauloneill.arcraidersplanner.dto.MetaforgeMapDataResponse;
@@ -10,9 +12,13 @@ import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.LootAreaRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
 import com.pauloneill.arcraidersplanner.repository.RecipeRepository;
+import com.pauloneill.arcraidersplanner.repository.RecipeIngredientRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -22,6 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set; // NEW
+import java.util.HashSet; // NEW
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -34,7 +42,10 @@ public class MetaforgeSyncService {
     private final MapMarkerRepository markerRepository;
     private final GameMapRepository gameMapRepository;
     private final RecipeRepository recipeRepository;
+    private final RecipeIngredientRepository recipeIngredientRepository;
     private final CoordinateCalibrationService calibrationService;
+    private final ObjectMapper objectMapper;
+    private final MarkerGroupingService markerGroupingService; // NEW
 
     @Value("${metaforge.api.url}")
     private String metaforgeApiUrl;
@@ -42,14 +53,19 @@ public class MetaforgeSyncService {
     public MetaforgeSyncService(RestClient restClient, ItemRepository itemRepository,
             LootAreaRepository lootAreaRepository, MapMarkerRepository markerRepository,
             GameMapRepository gameMapRepository, RecipeRepository recipeRepository,
-            CoordinateCalibrationService calibrationService) {
+            RecipeIngredientRepository recipeIngredientRepository,
+            CoordinateCalibrationService calibrationService, ObjectMapper objectMapper,
+            MarkerGroupingService markerGroupingService) { // NEW
         this.restClient = restClient;
         this.itemRepository = itemRepository;
         this.lootAreaRepository = lootAreaRepository;
         this.markerRepository = markerRepository;
         this.gameMapRepository = gameMapRepository;
         this.recipeRepository = recipeRepository;
+        this.recipeIngredientRepository = recipeIngredientRepository;
         this.calibrationService = calibrationService;
+        this.objectMapper = objectMapper;
+        this.markerGroupingService = markerGroupingService; // NEW
     }
 
     /**
@@ -126,6 +142,9 @@ public class MetaforgeSyncService {
         log.info("Successfully synced {} items across {} pages.", totalItemsSynced, totalPages);
         log.info("Recipe sync complete: {} created, {} updated, {} skipped",
                 recipesCreated, recipesUpdated, recipesSkipped);
+                
+        // Sync Workbench Upgrades from local JSONs
+        syncWorkbenchUpgrades();
     }
 
     private Item getItemToSave(MetaforgeItemDto dto, Optional<Item> existingItem, LootType lootType) {
@@ -138,6 +157,8 @@ public class MetaforgeSyncService {
         itemToSave.setIconUrl(dto.icon());
         itemToSave.setValue(dto.value());
         itemToSave.setLootType(lootType);
+        // Link to Metaforge ID for ingredients lookup
+        itemToSave.setMetaforgeId(dto.id());
 
         if (dto.stats() != null) {
             itemToSave.setWeight(dto.stats().weight());
@@ -157,6 +178,98 @@ public class MetaforgeSyncService {
         }
 
         return itemToSave;
+    }
+
+    @Transactional
+    public void syncWorkbenchUpgrades() {
+        log.info("--- STARTING WORKBENCH UPGRADE SYNC ---");
+        ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        try {
+            Resource[] resources = resolver.getResources("classpath:data/hideout/*.json");
+            log.info("Found {} hideout definition files", resources.length);
+
+            for (Resource resource : resources) {
+                try {
+                    HideoutUpgradeDto dto = objectMapper.readValue(resource.getInputStream(), HideoutUpgradeDto.class);
+
+                    // FILTER: Skip non-targetable workbenches
+                    if (dto.maxLevel() == 0 || dto.levels().isEmpty()) {
+                        log.info("Skipping {} - no upgrade levels", dto.id());
+                        continue;
+                    }
+
+                    // FILTER: Skip if all levels use only coins (no item requirements)
+                    if (hasOnlyCoinRequirements(dto)) {
+                        log.info("Skipping {} - coin-based only", dto.id());
+                        continue;
+                    }
+
+                    processHideoutUpgrade(dto);
+                } catch (Exception e) {
+                    log.error("Failed to parse hideout file: {}", resource.getFilename(), e);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to load hideout resources", e);
+        }
+        log.info("--- WORKBENCH UPGRADE SYNC COMPLETE ---");
+    }
+
+    private boolean hasOnlyCoinRequirements(HideoutUpgradeDto dto) {
+        return dto.levels().stream()
+                .allMatch(level -> level.requirementItemIds() == null || level.requirementItemIds().isEmpty());
+    }
+
+    private void processHideoutUpgrade(HideoutUpgradeDto dto) {
+        String benchName = dto.name().getOrDefault("en", "Unknown Bench");
+        
+        for (HideoutUpgradeDto.UpgradeLevel level : dto.levels()) {
+            String metaforgeId = "hideout_" + dto.id() + "_lvl" + level.level();
+            String recipeName = benchName + " Level " + level.level();
+            
+            Optional<Recipe> existingRecipe = recipeRepository.findByMetaforgeItemId(metaforgeId);
+            
+            Recipe recipe;
+            if (existingRecipe.isPresent()) {
+                recipe = existingRecipe.get();
+                // Clear existing ingredients to ensure orphanRemoval triggers deletion
+                recipe.getIngredients().clear(); 
+            } else {
+                recipe = new Recipe();
+                recipe.setMetaforgeItemId(metaforgeId);
+            }
+            
+            recipe.setName(recipeName);
+            recipe.setDescription("Upgrade " + benchName + " to Level " + level.level());
+            recipe.setType(RecipeType.WORKBENCH_UPGRADE);
+            recipe.setIsRecyclable(false);
+            
+            // Use a map to aggregate quantities for duplicate items in requirements
+            Map<Item, Integer> aggregatedRequirements = new HashMap<>();
+            for (HideoutUpgradeDto.Requirement req : level.requirementItemIds()) {
+                Optional<Item> itemOpt = itemRepository.findByMetaforgeId(req.itemId());
+                
+                if (itemOpt.isPresent()) {
+                    Item ingredientItem = itemOpt.get();
+                    aggregatedRequirements.merge(ingredientItem, req.quantity(), Integer::sum);
+                } else {
+                    log.warn("Missing ingredient for upgrade '{}': {} (Metaforge ID)", recipeName, req.itemId());
+                }
+            }
+
+            // Create RecipeIngredient objects from aggregated requirements and add to the recipe's managed collection
+            for (Map.Entry<Item, Integer> entry : aggregatedRequirements.entrySet()) {
+                RecipeIngredient ingredient = new RecipeIngredient();
+                ingredient.setItem(entry.getKey());
+                ingredient.setQuantity(entry.getValue());
+                recipe.addIngredient(ingredient); 
+            }
+            
+            // Save the recipe if there are any ingredients (either new or updated existing ones)
+            if (!aggregatedRequirements.isEmpty()) {
+                recipeRepository.save(recipe);
+            }
+        }
     }
 
     @Transactional
@@ -215,6 +328,8 @@ public class MetaforgeSyncService {
             } catch (Exception e) {
                 log.error("Failed to sync markers for {}: {}", map.getName(), e.getMessage());
             }
+            // After all markers for a map are synced, group them
+            markerGroupingService.groupMarkersByContainer(map.getId()); // NEW
         }
         log.info("--- MARKER SYNC COMPLETE ---");
     }

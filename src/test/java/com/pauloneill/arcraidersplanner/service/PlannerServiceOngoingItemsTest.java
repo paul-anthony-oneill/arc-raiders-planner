@@ -8,13 +8,14 @@ import com.pauloneill.arcraidersplanner.model.GameMap;
 import com.pauloneill.arcraidersplanner.model.Item;
 import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
-import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.ContainerTargetInfo;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.RecipeTargetInfo;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.TargetItemInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -22,21 +23,23 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PlannerServiceOngoingItemsTest {
 
     @Mock
-    private ItemRepository itemRepository;
-    @Mock
     private GameMapRepository gameMapRepository;
     @Mock
     private MapMarkerRepository mapMarkerRepository;
     @Mock
     private EnemyService enemyService;
+    @Mock
+    private TargetResolutionService targetResolutionService;
 
-    @InjectMocks
+    private GeometryService geometryService;
     private PlannerService plannerService;
 
     private LootType industrial;
@@ -46,6 +49,9 @@ class PlannerServiceOngoingItemsTest {
 
     @BeforeEach
     void setUp() {
+        geometryService = new GeometryService();
+        plannerService = new PlannerService(gameMapRepository, mapMarkerRepository, enemyService, targetResolutionService, geometryService);
+
         industrial = new LootType();
         industrial.setName("Industrial");
 
@@ -65,8 +71,8 @@ class PlannerServiceOngoingItemsTest {
     @DisplayName("Ongoing Items: Should populate ongoingMatchItems in AreaDto when area has matching loot type")
     void testOngoingItems_PopulatedInAreaDto() {
         // Arrange
-        mockItem("Copper Wire", copperWire);
-        mockItem("Battery", battery);
+        mockTargetItems("Copper Wire", "Industrial");
+        mockOngoingItems("Battery", "Electronics");
 
         // Map with one area that has BOTH Industrial (Target) and Electronics (Ongoing)
         GameMap map = new GameMap();
@@ -89,6 +95,8 @@ class PlannerServiceOngoingItemsTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"), // Target: Industrial
                 null, 
+                Collections.emptyList(), // targetRecipeIds
+                Collections.emptyList(), // targetContainerTypes (NEW)
                 false, 
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 List.of("Battery")      // Ongoing: Electronics
@@ -111,7 +119,28 @@ class PlannerServiceOngoingItemsTest {
         assertEquals(1, waypointDto.ongoingMatchItems().size());
     }
 
-    private void mockItem(String name, Item item) {
-        when(itemRepository.findByName(name)).thenReturn(Optional.of(item));
+    private void mockTargetItems(String itemName, String lootType) {
+        TargetItemInfo info = new TargetItemInfo(
+                Set.of(lootType),
+                Collections.<String>emptySet(),
+                Collections.<String>emptySet(),
+                Map.of(lootType, List.of(itemName)),
+                Collections.<String, List<String>>emptyMap()
+        );
+        when(targetResolutionService.resolveTargetItems(eq(List.of(itemName)))).thenReturn(info);
+        
+        // Mock empty recipes/ingredients calls
+        when(targetResolutionService.resolveRecipes(anyList())).thenReturn(new RecipeTargetInfo(
+                Collections.<String>emptySet(), Collections.<String, Set<String>>emptyMap(), Collections.<String, String>emptyMap(), Collections.<String>emptySet()));
+        when(targetResolutionService.resolveTargetItems(eq(new ArrayList<>()))).thenReturn(new TargetItemInfo(
+                Collections.<String>emptySet(), Collections.<String>emptySet(), Collections.<String>emptySet(), Collections.<String, List<String>>emptyMap(), Collections.<String, List<String>>emptyMap()));
+        
+        // Mock container resolution to empty
+        when(targetResolutionService.resolveTargetContainers(anyList(), eq(null))).thenReturn(new TargetResolutionService.ContainerTargetInfo(Collections.emptyList()));
+    }
+
+    private void mockOngoingItems(String itemName, String lootType) {
+        when(targetResolutionService.resolveOngoingItems(eq(List.of(itemName))))
+                .thenReturn(Map.of(lootType, List.of(itemName)));
     }
 }

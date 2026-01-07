@@ -46,6 +46,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames
@@ -82,6 +84,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 true,
                 PlannerRequestDto.RoutingProfile.EASY_EXFIL,
                 Collections.emptyList() // Added ongoingItemNames
@@ -117,6 +121,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Industrial Parts"),
                 null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.AVOID_PVP,
                 Collections.emptyList() // Added ongoingItemNames
@@ -152,6 +158,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Mechanical Components"),
                 null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 true,
                 PlannerRequestDto.RoutingProfile.SAFE_EXFIL,
                 Collections.emptyList() // Added ongoingItemNames
@@ -187,6 +195,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Nonexistent Item"),
                 null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames
@@ -211,6 +221,8 @@ class PlannerControllerTest {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of("Copper Wire"),
                 null,
+                null, // targetRecipeIds
+                null, // targetContainerTypes (NEW)
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
                 Collections.emptyList() // Added ongoingItemNames
@@ -234,5 +246,190 @@ class PlannerControllerTest {
                 .andExpect(jsonPath("$[0].score").value(300.0))
                 .andExpect(jsonPath("$[1].mapName").value("Buried City"))
                 .andExpect(jsonPath("$[2].mapName").value("Blue Gate"));
+    }
+
+    // ============================================================================
+    // CONTAINER TARGETING E2E TESTS (Week 5 Task 5)
+    // ============================================================================
+
+    @Test
+    @DisplayName("E2E - Should generate route for container-only targeting")
+    void shouldGenerateRouteForContainerTargeting() throws Exception {
+        // Arrange: Request targeting specific container types
+        PlannerRequestDto request = new PlannerRequestDto(
+                Collections.emptyList(), // No items
+                Collections.emptyList(), // No enemies
+                Collections.emptyList(), // No recipes
+                List.of("red-locker", "raider-cache"), // Target containers
+                false,
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList()
+        );
+
+        PlannerResponseDto mockResponse = new PlannerResponseDto(
+                1L,
+                "The Spaceport",
+                250.0,
+                Collections.emptyList(), // Route with container zones would be here
+                null,
+                null,
+                null,
+                Collections.emptyList()
+        );
+
+        when(plannerService.generateRoute(any(PlannerRequestDto.class)))
+                .thenReturn(List.of(mockResponse));
+
+        // Act & Assert
+        mockMvc.perform(post("/api/planner")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].mapName").value("The Spaceport"))
+                .andExpect(jsonPath("$[0].score").value(250.0));
+    }
+
+    @Test
+    @DisplayName("E2E - Should handle mixed targeting (items + containers + enemies)")
+    void shouldHandleMixedTargeting() throws Exception {
+        // Arrange: Request with all three target types
+        PlannerRequestDto request = new PlannerRequestDto(
+                List.of("Copper Wire"),           // Items
+                List.of("sentinel"),              // Enemies
+                Collections.emptyList(),          // No recipes
+                List.of("weapon-crate"),          // Containers
+                false,
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList()
+        );
+
+        PlannerResponseDto mockResponse = new PlannerResponseDto(
+                2L,
+                "Buried City",
+                350.0, // Higher score due to multiple target types
+                Collections.emptyList(),
+                null,
+                null,
+                null,
+                Collections.emptyList()
+        );
+
+        when(plannerService.generateRoute(any(PlannerRequestDto.class)))
+                .thenReturn(List.of(mockResponse));
+
+        // Act & Assert
+        mockMvc.perform(post("/api/planner")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].mapName").value("Buried City"))
+                .andExpect(jsonPath("$[0].score").value(350.0));
+    }
+
+    @Test
+    @DisplayName("E2E - Should handle empty result when no container zones match")
+    void shouldHandleNoContainerMatches() throws Exception {
+        // Arrange: Request for containers that don't exist
+        PlannerRequestDto request = new PlannerRequestDto(
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                List.of("nonexistent-container"), // Invalid container type
+                false,
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList()
+        );
+
+        when(plannerService.generateRoute(any(PlannerRequestDto.class)))
+                .thenReturn(Collections.emptyList());
+
+        // Act & Assert
+        mockMvc.perform(post("/api/planner")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    @DisplayName("E2E - Should prioritize routes with multiple container zones")
+    void shouldPrioritizeMultipleContainerZones() throws Exception {
+        // Arrange: Multiple maps, some with more container zones than others
+        PlannerRequestDto request = new PlannerRequestDto(
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                List.of("red-locker"),
+                false,
+                PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
+                Collections.emptyList()
+        );
+
+        // Map 1 has more container zones (higher score)
+        PlannerResponseDto map1 = new PlannerResponseDto(
+                1L, "The Spaceport", 300.0,
+                Collections.emptyList(), null, null, null, Collections.emptyList()
+        );
+
+        // Map 2 has fewer container zones (lower score)
+        PlannerResponseDto map2 = new PlannerResponseDto(
+                2L, "Buried City", 150.0,
+                Collections.emptyList(), null, null, null, Collections.emptyList()
+        );
+
+        when(plannerService.generateRoute(any(PlannerRequestDto.class)))
+                .thenReturn(List.of(map1, map2)); // Already sorted by score
+
+        // Act & Assert
+        mockMvc.perform(post("/api/planner")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].mapName").value("The Spaceport"))
+                .andExpect(jsonPath("$[0].score").value(300.0))
+                .andExpect(jsonPath("$[1].mapName").value("Buried City"))
+                .andExpect(jsonPath("$[1].score").value(150.0));
+    }
+
+    @Test
+    @DisplayName("E2E - Should work with container targeting and extraction profiles")
+    void shouldCombineContainerTargetingWithExtractionProfile() throws Exception {
+        // Arrange: Container targeting with EASY_EXFIL profile
+        PlannerRequestDto request = new PlannerRequestDto(
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                List.of("weapon-crate", "raider-cache"),
+                true, // Has raider key
+                PlannerRequestDto.RoutingProfile.EASY_EXFIL, // Prioritize extraction
+                Collections.emptyList()
+        );
+
+        PlannerResponseDto mockResponse = new PlannerResponseDto(
+                1L,
+                "The Spaceport",
+                280.0,
+                Collections.emptyList(),
+                "Raider Hatch Alpha", // Extraction point
+                15.5,
+                25.3,
+                Collections.emptyList()
+        );
+
+        when(plannerService.generateRoute(any(PlannerRequestDto.class)))
+                .thenReturn(List.of(mockResponse));
+
+        // Act & Assert
+        mockMvc.perform(post("/api/planner")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].mapName").value("The Spaceport"))
+                .andExpect(jsonPath("$[0].extractionPoint").value("Raider Hatch Alpha"))
+                .andExpect(jsonPath("$[0].extractionLat").value(15.5))
+                .andExpect(jsonPath("$[0].extractionLng").value(25.3));
     }
 }

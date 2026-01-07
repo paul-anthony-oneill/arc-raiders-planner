@@ -27,7 +27,6 @@ public class EnemyService {
      * required loot drops
      */
     private static final Set<String> INCLUDED_ENEMIES = Set.of(
-            "queen",
             "leaper",
             "rocketeer",
             "sentinel",
@@ -36,9 +35,11 @@ public class EnemyService {
             "matriarch");
 
     private final MapMarkerRepository mapMarkerRepository;
+    private final DtoMapper dtoMapper;
 
-    public EnemyService(MapMarkerRepository mapMarkerRepository) {
+    public EnemyService(MapMarkerRepository mapMarkerRepository, DtoMapper dtoMapper) {
         this.mapMarkerRepository = mapMarkerRepository;
+        this.dtoMapper = dtoMapper;
     }
 
     /**
@@ -49,9 +50,7 @@ public class EnemyService {
      */
     public List<EnemyDto> getAllArcEnemies() {
         List<MapMarker> markers = mapMarkerRepository.findByCategoryIgnoreCase(ARC_CATEGORY);
-        return markers.stream()
-                .map(this::toDto)
-                .toList();
+        return dtoMapper.toEnemyDtos(markers);
     }
 
     /**
@@ -67,9 +66,7 @@ public class EnemyService {
         }
 
         List<MapMarker> markers = mapMarkerRepository.findArcEnemiesByName(query);
-        return markers.stream()
-                .map(this::toDto)
-                .toList();
+        return dtoMapper.toEnemyDtos(markers);
     }
 
     /**
@@ -85,10 +82,10 @@ public class EnemyService {
         }
 
         List<MapMarker> markers = mapMarkerRepository.findByGameMapId(mapId);
-        return markers.stream()
+        List<MapMarker> arcMarkers = markers.stream()
                 .filter(m -> ARC_CATEGORY.equalsIgnoreCase(m.getCategory()))
-                .map(this::toDto)
                 .toList();
+        return dtoMapper.toEnemyDtos(arcMarkers);
     }
 
     /**
@@ -148,24 +145,5 @@ public class EnemyService {
                 .filter(marker -> marker.getSubcategory() != null &&
                         typesLower.contains(marker.getSubcategory().toLowerCase()))
                 .toList();
-    }
-
-    /**
-     * Converts MapMarker entity to EnemyDto for frontend.
-     * WHY: Decouples internal model from API contract
-     *
-     * @param marker The MapMarker entity
-     * @return EnemyDto representation
-     */
-    private EnemyDto toDto(MapMarker marker) {
-        return new EnemyDto(
-                marker.getId(),
-                marker.getName() != null ? marker.getName() : marker.getSubcategory(),
-                marker.getSubcategory(),
-                marker.getGameMap().getName(),
-                marker.getLat(),
-                marker.getLng(),
-                null // FUTURE: Calculate threat level based on enemy type
-        );
     }
 }

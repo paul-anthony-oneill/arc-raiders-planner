@@ -16,4 +16,7 @@ public class AreaDto {
     private Integer lootAbundance; // 1 - Abundant, 2- Decent, 3 - Sparse
     private List<String> ongoingMatchItems; // Items from the ongoing list found in this area
     private List<String> targetMatchItems; // Items from the target list found in this area
+
+    // Zone highlighting support
+    private String mapName; // Map this area belongs to (for zone highlighting)
 }

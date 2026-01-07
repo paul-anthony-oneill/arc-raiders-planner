@@ -15,6 +15,7 @@ WITH new_area_data (name, map_x, map_y, coordinates, loot_abundance, map_name) A
     ('Rocket Assembly', 319, 268, '[[353.75,308],[296.75,260.25],[273.75,285],[233.5,254.5],[184.25,312.75],[234,356.75],[219.5,373.5],[266.25,412.5],[353.75,308]]', 2, 'The Spaceport'),
     ('Trench Towers', 125, 600, '[[578.5,84.5],[611.75,112],[659.5,153.5],[627,190.75],[545.5,123],[578.5,84.75]]', 2, 'The Spaceport'),
     ('Fuel Control', 245, 357, '[[389.25,249.5],[366.25,231.25],[355.25,236.75],[331.25,215],[309.25,244.25],[357.5,290.5],[388.25,250]]', 3, 'The Spaceport'),
+    ('Shipping Warehouse', -125, 585, '[[557.5,-181.5],[514,-130],[626.5,-40.5],[669.5,-92],[558,-182.5]]', 3, 'The Spaceport'),
 
 -- === BURIED CITY ===
 (
@@ -73,6 +74,10 @@ WITH new_area_data (name, map_x, map_y, coordinates, loot_abundance, map_name) A
     2,
     'Buried City'
 ),
+('Piazza Arbusto', 270, -160, '[[-83.5,330],[-114.5,216.5],[-241,186.5],[-261,195],[-177,361],[-84,332]]', 3, 'Buried City'),
+('Galleria', 222, 206, '[[124.5,235],[159.5,299],[328.25,201.75],[291.75,137.75],[124.5,235.25]]', 3, 'Buried City'),
+('Marano Park', -51, 82, '[[125.5,-143],[195,-12],[15.5,87.5],[-51.5,-45.5],[125,-142.5]]', 3, 'Buried City'),
+('Santa Maria Houses', 25, -286, '[[-243,-75.5],[-356.5,-9],[-387.5,113],[-308,133.5],[-181,67],[-243,-77]]', 3, 'Buried City'),
 
 -- === BLUE GATE ===
 ('Checkpoint', -71, -109, '[[-292.75,-166.75],[-163.75,101],[32.25,163.25],[140.25,58.25],[-10.75,-215.75],[-178.75,-271.25],[-292,-167]]', 1, 'Blue Gate'),
@@ -85,6 +90,7 @@ WITH new_area_data (name, map_x, map_y, coordinates, loot_abundance, map_name) A
     ('Ruined Homestead', -14, -531, '[[-457,-33],[-604,-94],[-645.5,8.5],[-492,80.5],[-456.5,-34.5]]', 3, 'Blue Gate'),
     ('Olive Grove', -125, -439, '[[-385,-170.5],[-476,-213],[-526,-51],[-423.5,-22],[-384.5,-169.5]]', 3, 'Blue Gate'),
     ('Adorned Wreckage', -672, 42, '[[108,-654],[178,-730.5],[12,-863],[-111.5,-736],[-59.5,-501.5],[57,-563.5],[106.5,-655]]', 3, 'Blue Gate'),
+    ('Trapper''s Glade', -572, 179, '[[186,-680],[81,-653],[39,-538],[179,-364],[274,-483],[306,-603],[186,-681]]', 3, 'Blue Gate'),
     ('Barren Clearing', -773, 475, '[[562.5,-784.5],[416,-888],[316.5,-797],[402.5,-710],[493.5,-682.5],[570,-764.5],[561.5,-785]]', 3, 'Blue Gate')
     
 ),
@@ -118,17 +124,63 @@ FROM
         -- Map Area Names to their Loot Types here
         -- Use one CASE per area to return the Loot Type name(s) it should have
         CASE ia.name
+            -- The Spaceport Areas
+            WHEN 'Arrival Building' THEN 'Commercial'
+            WHEN 'Arrival Building' THEN 'Technological'
+            WHEN 'Departure Building' THEN 'Commercial'
+            WHEN 'Departure Building' THEN 'Technological'
+            WHEN 'Launch Towers' THEN 'Security'
+            WHEN 'Launch Towers' THEN 'Technological'
+            WHEN 'Control Tower A6' THEN 'Technological'
+            WHEN 'Control Tower A6' THEN 'Commercial'
+            WHEN 'Container Storage' THEN 'Industrial'
+            WHEN 'Container Storage' THEN 'Mechanical'
+            WHEN 'Vehicle Maintenance' THEN 'Mechanical'
+            WHEN 'Vehicle Maintenance' THEN 'Industrial'
+            WHEN 'Rocket Assembly' THEN 'Industrial'
+            WHEN 'Rocket Assembly' THEN 'Exodus'
+            WHEN 'Trench Towers' THEN 'Technological'
+            WHEN 'Fuel Control' THEN 'Electrical'
+            WHEN 'Fuel Control' THEN 'Mechanical'
+            WHEN 'Shipping Warehouse' THEN 'Industrial'
+            WHEN 'Shipping Warehouse' THEN 'Mechanical'
+            -- Buried City Areas
+            WHEN 'Plaza Rosa' THEN 'Medical'
+            WHEN 'Plaza Rosa' THEN 'Commercial'
+            WHEN 'Grandioso Apartments' THEN 'Residential'
+            WHEN 'Town Hall' THEN 'Old World'
+            WHEN 'Research' THEN 'Technological'
+            WHEN 'Research' THEN 'Medical'
+            WHEN 'Space Travel' THEN 'Commercial'
+            WHEN 'Space Travel' THEN 'Technological'
+            WHEN 'Hospital' THEN 'Medical'
+            WHEN 'Library' THEN 'Commercial'
+            WHEN 'Library' THEN 'Old World'
+            WHEN 'Parking Garage' THEN 'Mechanical'
+            WHEN 'Piazza Arbusto' THEN 'Medical'
+            WHEN 'Piazza Arbusto' THEN 'Commercial'
+            WHEN 'Galleria' THEN 'Commercial'
+            WHEN 'Marano Park' THEN 'Nature'
+            WHEN 'Santa Maria Houses' THEN 'Residential'
+            WHEN 'Santa Maria Houses' THEN 'Old World'
+            -- Blue Gate Areas
             WHEN 'Barren Clearing' THEN 'ARC'
             WHEN 'Adorned Wreckage' THEN 'Industrial'
+            WHEN 'Adorned Wreckage' THEN 'Mechanical'
             WHEN 'Raider''s Refuge' THEN 'Residential'
             WHEN 'Checkpoint' THEN 'Mechanical'
             WHEN 'Warehouse Complex' THEN 'Industrial'
             WHEN 'Pilgrim''s Peak' THEN 'Electrical'
+            WHEN 'Pilgrim''s Peak' THEN 'Electrical'
             WHEN 'Ancient Fort' THEN 'Old World'
+            WHEN 'Ancient Fort' THEN 'Technological'
             WHEN 'Village' THEN 'Commercial'
+            WHEN 'Village' THEN 'Residential'
             WHEN 'Ruined Homestead' THEN 'Old World'
+            WHEN 'Ruined Homestead' THEN 'Residential'
             WHEN 'Olive Grove' THEN 'Nature'
             WHEN 'Reinforced Reception' THEN 'Security'
+            WHEN 'Trapper''s Glade' THEN 'Nature'
             -- Add more area to loot type mappings as needed
         END
     )

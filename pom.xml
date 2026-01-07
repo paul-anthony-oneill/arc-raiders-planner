@@ -142,6 +142,15 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <configuration>
+                    <url>jdbc:postgresql://localhost:5432/arc_planner</url>
+                    <user>arc_user</user>
+                    <password>secret_password</password>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

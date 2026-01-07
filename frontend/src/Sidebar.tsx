@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import ItemIndex from "./ItemIndex";
 import EnemyIndex from "./EnemyIndex";
 import RecipeIndex from "./RecipeIndex";
+import { UpgradeCheckModal } from "./components/UpgradeCheckModal";
 import { RoutingProfile } from "./types";
 import type { Item, EnemyType, Recipe } from "./types";
 
@@ -102,6 +103,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   onIngredientUpdate,
 }) => {
   const [targetType, setTargetType] = useState<"items" | "enemies" | "recipes">("items");
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    targetItemName: string;
+    prerequisiteItemName: string;
+    targetRecipeId: number;
+    prerequisiteRecipeId: number;
+  }>({
+    isOpen: false,
+    targetItemName: "",
+    prerequisiteItemName: "",
+    targetRecipeId: 0,
+    prerequisiteRecipeId: 0
+  });
 
   // Filter active recipes
   const activeRecipes = useMemo(() =>
@@ -109,17 +123,117 @@ const Sidebar: React.FC<SidebarProps> = ({
     [recipes, recipeSelection]
   );
 
+  const handleRecipeClick = (recipeId: number) => {
+    // If unselecting, just toggle
+    if (recipeSelection[recipeId]) {
+      onToggleRecipe(recipeId);
+      return;
+    }
+
+    const recipe = recipes.find(r => r.id === recipeId);
+    if (!recipe) return;
+
+    // Check for prerequisite (simplistic: check if any ingredient is also a recipe)
+    // Preference: Ingredients that match the recipe name pattern (e.g. "Anvil") or are "Upgrade" type
+    // But since we don't have Types in ingredients, we check if ingredient name matches a known recipe name.
+    
+    // Heuristic: Find an ingredient that is also a recipe and is "similar" or "upgrade"
+    // For MVP: Find ANY ingredient that matches a recipe name.
+    const prerequisiteRecipe = recipes.find(r => 
+        recipe.ingredients.some(ing => ing.itemName === r.name)
+    );
+
+    if (prerequisiteRecipe) {
+        setModalState({
+            isOpen: true,
+            targetItemName: recipe.name,
+            prerequisiteItemName: prerequisiteRecipe.name,
+            targetRecipeId: recipeId,
+            prerequisiteRecipeId: prerequisiteRecipe.id!
+        });
+    } else {
+        onToggleRecipe(recipeId);
+    }
+  };
+
+  const handleModalConfirm = (hasPrerequisite: boolean) => {
+    // Always toggle the target
+    onToggleRecipe(modalState.targetRecipeId);
+
+    if (!hasPrerequisite) {
+        // Recursively find and toggle prerequisites
+        let currentId = modalState.prerequisiteRecipeId;
+        // Safety loop break
+        let depth = 0;
+        
+        while (currentId && depth < 5) {
+            // Toggle if not selected
+            if (!recipeSelection[currentId]) {
+                onToggleRecipe(currentId);
+            }
+
+            // Find next prerequisite
+            const currentRecipe = recipes.find(r => r.id === currentId);
+            if (!currentRecipe) break;
+            
+            const nextPrereq = recipes.find(r => 
+                currentRecipe.ingredients.some(ing => ing.itemName === r.name)
+            );
+            
+            if (nextPrereq) {
+                currentId = nextPrereq.id!;
+            } else {
+                break;
+            }
+            depth++;
+        }
+    }
+    setModalState(prev => ({ ...prev, isOpen: false }));
+  };
+
   return (
     <aside className="flex flex-col h-full border-r-2 border-retro-sand/20 bg-retro-dark/90 relative overflow-hidden">
+      <UpgradeCheckModal 
+        isOpen={modalState.isOpen}
+        targetItemName={modalState.targetItemName}
+        prerequisiteItemName={modalState.prerequisiteItemName}
+        onConfirm={handleModalConfirm}
+        onCancel={() => setModalState(prev => ({ ...prev, isOpen: false }))}
+      />
+
       {/* CRT Overlay for Sidebar */}
       <div className="absolute inset-0 crt-overlay z-10 pointer-events-none"></div>
 
       {/* Header */}
       <div className="p-4 border-b border-retro-sand/20 z-20">
-        <h2 className="text-xl font-display text-retro-orange text-glow uppercase tracking-widest">
-          Mission Control
-        </h2>
-        <div className="text-xs text-retro-sand-dim font-mono mt-1">
+        <div className="flex items-start justify-between mb-2">
+          <h2 className="text-xl font-display text-retro-orange text-glow uppercase tracking-widest">
+            Mission Control
+          </h2>
+          <a
+            href="/setup"
+            className="
+              text-xs
+              font-mono
+              text-retro-sand-dim
+              hover:text-retro-orange
+              transition-colors
+              border
+              border-retro-sand/20
+              hover:border-retro-orange/50
+              px-2
+              py-1
+              whitespace-nowrap
+            "
+            onClick={(e) => {
+              e.preventDefault()
+              window.location.href = '/setup'
+            }}
+          >
+            ← Setup
+          </a>
+        </div>
+        <div className="text-xs text-retro-sand-dim font-mono">
           SYS.VER.2.1.0 // TARGETING
         </div>
       </div>
@@ -175,10 +289,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                 selectedEnemyTypes={selectedEnemyTypes}
               />
             ) : (
-              <RecipeIndex 
+              <RecipeIndex
                 recipes={recipes}
                 selectionState={recipeSelection}
-                onToggleRecipe={onToggleRecipe}
+                onToggleRecipe={handleRecipeClick}
               />
             )}
           </div>
@@ -201,10 +315,10 @@ const Sidebar: React.FC<SidebarProps> = ({
               NO OBJECTIVES SELECTED
             </div>
           )}
-          
+
           {/* Recipe Trackers */}
           {activeRecipes.map(recipe => (
-            <RecipeTracker 
+            <RecipeTracker
                 key={`recipe-${recipe.id}`}
                 recipe={recipe}
                 status={recipeSelection[recipe.id!]!}

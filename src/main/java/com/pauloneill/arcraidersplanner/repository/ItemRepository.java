@@ -11,5 +11,7 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 
     List<Item> findByNameContainingIgnoreCase(String name);
 
+    Optional<Item> findByMetaforgeId(String metaforgeId);
+
     List<Item> findTop50ByOrderByNameAsc();
 }

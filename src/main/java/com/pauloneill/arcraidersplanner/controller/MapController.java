@@ -8,6 +8,7 @@ import com.pauloneill.arcraidersplanner.model.LootType;
 import com.pauloneill.arcraidersplanner.model.MapMarker;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.service.DtoMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -35,10 +36,12 @@ public class MapController {
 
         private final GameMapRepository mapRepository;
         private final MapMarkerRepository mapMarkerRepository;
+        private final DtoMapper dtoMapper;
 
-        public MapController(GameMapRepository mapRepository, MapMarkerRepository mapMarkerRepository) {
+        public MapController(GameMapRepository mapRepository, MapMarkerRepository mapMarkerRepository, DtoMapper dtoMapper) {
                 this.mapRepository = mapRepository;
                 this.mapMarkerRepository = mapMarkerRepository;
+                this.dtoMapper = dtoMapper;
         }
 
         /**
@@ -60,7 +63,7 @@ public class MapController {
         public ResponseEntity<GameMapDto> getMapData(
                         @Parameter(description = "Name of the map (e.g., 'Dam Battlegrounds')", required = true) @PathVariable String name) {
                 return mapRepository.findByNameWithAreas(name)
-                                .map(this::convertToDto)
+                                .map(dtoMapper::toDto)
                                 .map(ResponseEntity::ok)
                                 .orElse(ResponseEntity.notFound().build());
         }
@@ -110,41 +113,6 @@ public class MapController {
         // List<MapMarker> markers = mapMarkerRepository.findByGameMapId(mapDbId);
         // return ResponseEntity.ok(markers);
         // }
-
-        private GameMapDto convertToDto(GameMap map) {
-                GameMapDto dto = new GameMapDto();
-                dto.setId(map.getId());
-                dto.setName(map.getName());
-                dto.setDescription(map.getDescription());
-                dto.setImageUrl(map.getImageUrl());
-                if (map.getAreas() != null) {
-                        dto.setAreas(map.getAreas().stream()
-                                        .map(this::convertAreaToDto)
-                                        .collect(Collectors.toSet()));
-                }
-                dto.setCalibrationScaleX(map.getCalibrationScaleX());
-                dto.setCalibrationScaleY(map.getCalibrationScaleY());
-                dto.setCalibrationOffsetX(map.getCalibrationOffsetX());
-                dto.setCalibrationOffsetY(map.getCalibrationOffsetY());
-                return dto;
-        }
-
-        private AreaDto convertAreaToDto(Area area) {
-                AreaDto dto = new AreaDto();
-                dto.setId(Long.valueOf(area.getId()));
-                dto.setName(area.getName());
-                dto.setMapX(area.getMapX());
-                dto.setMapY(area.getMapY());
-                if (area.getCoordinates() != null) {
-                        dto.setCoordinates(area.getCoordinates());
-                }
-                if (area.getLootTypes() != null) {
-                        dto.setLootTypes(area.getLootTypes().stream()
-                                        .map(LootType::getName)
-                                        .collect(Collectors.toSet()));
-                }
-                return dto;
-        }
 
         /**
          * Update map calibration constants for coordinate transformation.

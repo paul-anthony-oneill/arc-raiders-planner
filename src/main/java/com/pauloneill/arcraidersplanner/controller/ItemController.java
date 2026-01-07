@@ -4,6 +4,7 @@ import com.pauloneill.arcraidersplanner.dto.ItemDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
 import com.pauloneill.arcraidersplanner.model.Item;
+import com.pauloneill.arcraidersplanner.service.DtoMapper;
 import com.pauloneill.arcraidersplanner.service.ItemService;
 import com.pauloneill.arcraidersplanner.service.PlannerService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,10 +31,12 @@ public class ItemController {
 
     private final PlannerService plannerService;
     private final ItemService itemService;
+    private final DtoMapper dtoMapper;
 
-    public ItemController(PlannerService plannerService, ItemService itemService) {
+    public ItemController(PlannerService plannerService, ItemService itemService, DtoMapper dtoMapper) {
         this.plannerService = plannerService;
         this.itemService = itemService;
+        this.dtoMapper = dtoMapper;
     }
 
     /**
@@ -66,9 +69,47 @@ public class ItemController {
             items = itemService.getAllItems();
         }
 
-        return items.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        List<ItemDto> dtos = dtoMapper.toItemDtos(items);
+        java.util.Set<String> craftableIds = new java.util.HashSet<>(itemService.getCraftableMetaforgeIds());
+
+        dtos.forEach(dto -> {
+            if (dto.getMetaforgeId() != null && craftableIds.contains(dto.getMetaforgeId())) {
+                dto.setHasRecipe(true);
+            }
+        });
+
+        return dtos;
+    }
+
+    /**
+     * Get detailed item information with crafting context.
+     * WHY: Provides comprehensive item data for the tactical planner center panel,
+     * including crafting recipes, usage in other recipes, and enemy drop sources
+     *
+     * @param id Item ID
+     * @return ItemDto with full crafting/usage context
+     */
+    @Operation(
+            summary = "Get item details with crafting context",
+            description = "Retrieves detailed item information including crafting recipe, " +
+                    "recipes that use this item as ingredient, and enemy drop sources"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Item details retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = ItemDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Item not found"
+            )
+    })
+    @GetMapping("/{id}/details")
+    public ItemDto getItemDetails(
+            @Parameter(description = "Item ID", required = true)
+            @PathVariable Long id) {
+        return itemService.getItemWithContext(id);
     }
 
     /**
@@ -101,9 +142,11 @@ public class ItemController {
         PlannerRequestDto request = new PlannerRequestDto(
                 List.of(itemName),
                 null,
+                java.util.Collections.emptyList(), // targetRecipeIds
+                java.util.Collections.emptyList(), // targetContainerTypes
                 false,
                 PlannerRequestDto.RoutingProfile.PURE_SCAVENGER,
-                java.util.Collections.emptyList() // Added ongoingItemNames
+                java.util.Collections.emptyList() // ongoingItemNames
         );
         return plannerService.generateRoute(request);
     }
@@ -151,21 +194,12 @@ public class ItemController {
         return plannerService.generateRoute(request);
     }
 
-    private ItemDto convertToDto(Item item) {
-        ItemDto dto = new ItemDto();
-        dto.setId(item.getId());
-        dto.setName(item.getName());
-        dto.setDescription(item.getDescription());
-        dto.setRarity(item.getRarity());
-        dto.setItemType(item.getItemType());
-        dto.setIconUrl(item.getIconUrl());
-        dto.setValue(item.getValue());
-        dto.setWeight(item.getWeight());
-        dto.setStackSize(item.getStackSize());
-
-        if (item.getLootType() != null) {
-            dto.setLootType(item.getLootType().getName());
-        }
-        return dto;
+    @Operation(
+            summary = "Get recipe chain for an item",
+            description = "Returns the immediate recipe ingredients and identifies prerequisites for recursive crafting logic."
+    )
+    @GetMapping("/{id}/recipe-chain")
+    public com.pauloneill.arcraidersplanner.dto.RecipeChainDto getRecipeChain(@PathVariable Long id) {
+        return itemService.getRecipeChain(id);
     }
 }

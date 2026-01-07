@@ -27,6 +27,11 @@ public class Item {
     @Column(name = "item_type")
     private String itemType;
 
+    // Links to Metaforge API item.id
+    // WHY: Required for mapping recipes and external data references
+    @Column(name = "metaforge_id", unique = true)
+    private String metaforgeId;
+
     // Mechanical, Industrial etc
     @ManyToOne
     @JoinColumn(name = "loot_type_id")

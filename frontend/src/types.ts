@@ -13,7 +13,28 @@ export interface Item {
   value: number;
   weight: number;
   stackSize: number;
-  lootType: LootType | null;
+  lootType: string | null; // Just the loot type name from backend
+
+  // Detail panel fields (populated by /api/items/{id}/details endpoint)
+  droppedBy?: string[];           // Enemy IDs that drop this item
+  usedInRecipes?: Recipe[];   // Recipes that use this item as ingredient
+  craftingRecipe?: Recipe;        // Recipe to craft this item (if craftable)
+  hasRecipe?: boolean;            // Whether this item has a crafting recipe (for grid view)
+}
+
+export interface RecipeIngredientChain {
+  itemId: number;
+  itemName: string;
+  quantity: number;
+  isPrerequisite: boolean;
+  recipeId: number | null;
+}
+
+export interface RecipeChain {
+  itemId: number;
+  itemName: string;
+  recipeId: number;
+  ingredients: RecipeIngredientChain[];
 }
 
 // Represents an enemy type for selection (not a specific spawn)
@@ -31,6 +52,29 @@ export interface EnemySpawn {
   droppedItems?: string[]; // New field for items dropped by this enemy type
 }
 
+// Represents a targetable container type (e.g., "Red Locker")
+export interface ContainerType {
+  id: number;
+  name: string;
+  subcategory: string; // e.g., "red-locker"
+  description: string;
+  iconUrl?: string;
+}
+
+// Represents a clustered group of container markers
+export interface MarkerGroup {
+  id: number;
+  name: string;
+  mapId: number;
+  mapName: string;
+  containerType: ContainerType;
+  centerLat: number;
+  centerLng: number;
+  markerCount: number;
+  radius: number;
+  markerIds: string[];
+}
+
 export interface MapRecommendation {
   mapId: number;
   mapName: string;
@@ -42,9 +86,12 @@ export interface Waypoint {
   name: string;
   x: number;
   y: number;
-  type: "AREA" | "MARKER";
+  type: "AREA" | "MARKER" | "MARKER_GROUP";
   lootTypes?: string[];
   lootAbundance?: number;
+  containerType?: string; // Only relevant for MARKER_GROUP type
+  markerCount?: number;   // Only relevant for MARKER_GROUP type
+  radius?: number;        // Only relevant for MARKER_GROUP type
   ongoingMatchItems?: string[];
   targetMatchItems?: string[];
 }
@@ -71,13 +118,7 @@ export const RoutingProfile = {
 export type RoutingProfile =
   (typeof RoutingProfile)[keyof typeof RoutingProfile];
 
-export interface PlannerRequest {
-  targetItemNames: string[];
-  targetEnemyTypes: string[]; // Enemy type names to hunt (e.g., ["sentinel", "guardian"])
-  hasRaiderKey: boolean;
-  routingProfile: RoutingProfile;
-  ongoingItemNames?: string[];
-}
+
 
 export const RecipeType = {
   CRAFTING: "CRAFTING",
@@ -95,10 +136,21 @@ export interface RecipeIngredient {
 
 export interface Recipe {
   id?: number;
+  metaforgeItemId: string;  // Used for planner targeting
   name: string;
   description: string;
   type: RecipeType;
   ingredients: RecipeIngredient[];
+}
+
+export interface PlannerRequest {
+  targetItemNames: string[];
+  targetEnemyTypes: string[];
+  targetRecipeIds: string[];
+  targetContainerTypes: string[];
+  hasRaiderKey: boolean;
+  routingProfile: RoutingProfile;
+  ongoingItemNames?: string[];
 }
 
 export interface PlannerResponse {
@@ -110,4 +162,24 @@ export interface PlannerResponse {
   extractionLat?: number;  // Calibrated Y coordinate of extraction point
   extractionLng?: number;  // Calibrated X coordinate of extraction point
   nearbyEnemySpawns: EnemySpawn[]; // All spawns of selected enemy types with proximity info
+}
+
+// Session state management types
+export interface TargetSelection {
+  id: string | number;
+  type: "ITEM" | "RECIPE" | "ENEMY" | "CONTAINER";
+  priority: "PRIORITY" | "ONGOING";
+  name: string;
+  iconUrl?: string;
+  rarity?: string;
+  lootZone?: string;
+  data?: Item | Recipe | EnemyType | ContainerType; // Store full object for convenience
+}
+
+export interface SessionState {
+  priorityTargets: TargetSelection[];
+  ongoingTargets: TargetSelection[];
+  routingProfile: RoutingProfile;
+  hasRaiderKey: boolean;
+  lastCalculatedHash: string | null;
 }

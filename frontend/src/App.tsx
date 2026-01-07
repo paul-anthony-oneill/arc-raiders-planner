@@ -171,6 +171,8 @@ function App() {
             const requestBody: PlannerRequest = {
                 targetItemNames: [...loadout.map((i) => i.name), ...targetIngredients],
                 targetEnemyTypes: selectedEnemyTypes,
+                targetRecipeIds: [],
+                targetContainerTypes: [], // TODO: Add container targeting in future phase
                 hasRaiderKey: hasRaiderKey,
                 routingProfile: routingProfile,
                 ongoingItemNames: ongoingIngredients,

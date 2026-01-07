@@ -1,7 +1,5 @@
 package com.pauloneill.arcraidersplanner.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pauloneill.arcraidersplanner.dto.AreaDto;
 import com.pauloneill.arcraidersplanner.dto.EnemySpawnDto;
 import com.pauloneill.arcraidersplanner.dto.PlannerRequestDto;
@@ -9,12 +7,12 @@ import com.pauloneill.arcraidersplanner.dto.PlannerResponseDto;
 import com.pauloneill.arcraidersplanner.dto.WaypointDto;
 import com.pauloneill.arcraidersplanner.model.*;
 import com.pauloneill.arcraidersplanner.repository.GameMapRepository;
-import com.pauloneill.arcraidersplanner.repository.ItemRepository;
 import com.pauloneill.arcraidersplanner.repository.MapMarkerRepository;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.RecipeTargetInfo;
+import com.pauloneill.arcraidersplanner.service.TargetResolutionService.TargetItemInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,28 +20,46 @@ import java.util.stream.Collectors;
 @Service
 public class PlannerService {
 
-    private final ItemRepository itemRepository;
     private final GameMapRepository gameMapRepository;
     private final MapMarkerRepository mapMarkerRepository;
     private final EnemyService enemyService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final TargetResolutionService targetResolutionService;
+    private final GeometryService geometryService;
 
-    public PlannerService(ItemRepository itemRepository, GameMapRepository gameMapRepository,
-            MapMarkerRepository mapMarkerRepository, EnemyService enemyService) {
-        this.itemRepository = itemRepository;
+    public PlannerService(GameMapRepository gameMapRepository,
+                          MapMarkerRepository mapMarkerRepository,
+                          EnemyService enemyService,
+                          TargetResolutionService targetResolutionService,
+                          GeometryService geometryService) {
         this.gameMapRepository = gameMapRepository;
         this.mapMarkerRepository = mapMarkerRepository;
         this.enemyService = enemyService;
+        this.targetResolutionService = targetResolutionService;
+        this.geometryService = geometryService;
     }
 
     public List<PlannerResponseDto> generateRoute(PlannerRequestDto request) {
         // Step 1: Resolve target item information (loot types and dropped-by enemies)
-        TargetItemInfo targetItemInfo = resolveTargetItemInformation(request.targetItemNames());
+        TargetItemInfo targetItemInfo = targetResolutionService.resolveTargetItems(request.targetItemNames());
 
-        Set<String> requiredLootTypes = targetItemInfo.targetLootTypes();
+        // Step 1b: Resolve recipe requirements (crafting + workbench upgrades)
+        RecipeTargetInfo recipeInfo = targetResolutionService.resolveRecipes(request.targetRecipeIds());
+
+        // Step 1c: Resolve loot types for recipe ingredients
+        TargetItemInfo ingredientInfo = targetResolutionService.resolveTargetItems(new ArrayList<>(recipeInfo.allIngredientNames()));
+
+        Set<String> requiredLootTypes = new HashSet<>(targetItemInfo.targetLootTypes());
+        requiredLootTypes.addAll(ingredientInfo.targetLootTypes());
+
         Set<String> targetDroppedByEnemies = targetItemInfo.targetDroppedByEnemies();
         Map<String, List<String>> lootTypeToItemNames = targetItemInfo.lootTypeToItemNames();
         Map<String, List<String>> enemyTypeToItemNames = targetItemInfo.enemyTypeToItemNames();
+
+        // Step 1d: Resolve target container types to marker groups
+        TargetResolutionService.ContainerTargetInfo containerInfo = targetResolutionService.resolveTargetContainers(
+                request.targetContainerTypes(),
+                null // Pass null for mapId here, filtering will happen inside the loop
+        );
 
         // Step 2: Combine explicitly requested enemy types with those derived from item drops
         Set<String> allTargetEnemyTypes = new HashSet<>();
@@ -52,15 +68,18 @@ public class PlannerService {
         }
         allTargetEnemyTypes.addAll(targetDroppedByEnemies);
 
+        // Filter out "queen" as it's too difficult for general farming
+        allTargetEnemyTypes.removeIf(type -> "queen".equalsIgnoreCase(type));
+
         // Step 3: Get all spawns of target enemy types
         List<MapMarker> allEnemySpawns = Collections.emptyList();
         if (!allTargetEnemyTypes.isEmpty()) {
             allEnemySpawns = enemyService.getSpawnsByTypes(new ArrayList<>(allTargetEnemyTypes));
         }
 
-        // Require either items OR enemies to be specified
-        if (requiredLootTypes.isEmpty() && allTargetEnemyTypes.isEmpty()) {
-            log.warn("No loot types or enemy types specified for route generation.");
+        // Require either items OR enemies OR recipes OR containers to be specified
+        if (requiredLootTypes.isEmpty() && allTargetEnemyTypes.isEmpty() && recipeInfo.recipeIds().isEmpty() && containerInfo.markerGroups().isEmpty()) {
+            log.warn("No loot types, enemy types, recipes, or container types specified for route generation.");
             return Collections.emptyList();
         }
 
@@ -84,14 +103,21 @@ public class PlannerService {
                     .filter(marker -> targetItemInfo.exclusiveDroppedByEnemies().contains(marker.getSubcategory()))
                     .toList();
 
-            // Combine relevant areas and exclusive enemy markers into the list of viable points for routing
+            // 3. Identify Target Container Groups for this map
+            List<MarkerGroup> targetContainerGroupsOnMap = containerInfo.markerGroups().stream()
+                    .filter(group -> group.getGameMap().getId().equals(map.getId()))
+                    .toList();
+
+
+            // Combine relevant areas, exclusive enemy markers, and container groups into the list of viable points for routing
             List<RoutablePoint> viablePoints = new ArrayList<>();
             viablePoints.addAll(relevantLootAreas);
             viablePoints.addAll(exclusiveEnemyMarkers);
+            viablePoints.addAll(targetContainerGroupsOnMap);
 
             // Skip map if it has no viable points
             if (viablePoints.isEmpty()) {
-                log.debug("Map {} has no relevant areas or exclusive enemy markers for target items.", map.getName());
+                log.debug("Map {} has no relevant areas, exclusive enemy markers, or target container groups for target items.", map.getName());
                 continue;
             }
 
@@ -116,7 +142,7 @@ public class PlannerService {
                         map.getName());
             }
 
-            // 5. Calculate Score based on Profile (including enemy proximity)
+            // 5. Calculate Score based on Profile (including enemy proximity and recipe ingredients)
             RouteResult route = calculateRouteAndScore(
                     viablePoints, // Use combined list of routable points
                     relevantLootAreas, // For score calculation for areas
@@ -126,10 +152,11 @@ public class PlannerService {
                     extractionMarkers,
                     enemySpawnsOnMap, // All enemies for proximity scoring
                     map,
-                    enemyTypeToItemNames);
+                    enemyTypeToItemNames,
+                    ingredientInfo); // Pass ingredient info for bonus scoring
 
             // Resolve Ongoing Items Map: LootType Name -> List of Item Names
-            Map<String, List<String>> ongoingLootMap = resolveOngoingItems(request.ongoingItemNames());
+            Map<String, List<String>> ongoingLootMap = targetResolutionService.resolveOngoingItems(request.ongoingItemNames());
 
             PlannerResponseDto response = new PlannerResponseDto(
                     map.getId(),
@@ -150,49 +177,8 @@ public class PlannerService {
         return results;
     }
 
-    private record TargetItemInfo(
-            Set<String> targetLootTypes,
-            Set<String> targetDroppedByEnemies,
-            Set<String> exclusiveDroppedByEnemies, // Enemies that ONLY drop item, no loot area
-            Map<String, List<String>> lootTypeToItemNames,
-            Map<String, List<String>> enemyTypeToItemNames
-    ) {}
-
-    private TargetItemInfo resolveTargetItemInformation(List<String> itemNames) {
-        Set<String> targetLootTypes = new HashSet<>();
-        Set<String> targetDroppedByEnemies = new HashSet<>();
-        Set<String> exclusiveDroppedByEnemies = new HashSet<>();
-        Map<String, List<String>> lootTypeToItemNames = new HashMap<>();
-        Map<String, List<String>> enemyTypeToItemNames = new HashMap<>();
-
-        if (itemNames != null && !itemNames.isEmpty()) {
-            for (String name : itemNames) {
-                itemRepository.findByName(name)
-                        .ifPresent(item -> {
-                            boolean hasLootType = item.getLootType() != null;
-                            boolean hasDroppedBy = item.getDroppedBy() != null && !item.getDroppedBy().isEmpty();
-
-                            if (hasLootType) {
-                                targetLootTypes.add(item.getLootType().getName());
-                                lootTypeToItemNames.computeIfAbsent(item.getLootType().getName(), k -> new ArrayList<>()).add(name);
-                            }
-                            if (hasDroppedBy) {
-                                targetDroppedByEnemies.addAll(item.getDroppedBy());
-                                item.getDroppedBy().forEach(enemyType ->
-                                        enemyTypeToItemNames.computeIfAbsent(enemyType, k -> new ArrayList<>()).add(name));
-
-                                if (!hasLootType) { // If item ONLY drops from enemy
-                                    exclusiveDroppedByEnemies.addAll(item.getDroppedBy());
-                                }
-                            }
-                        });
-            }
-        }
-        return new TargetItemInfo(targetLootTypes, targetDroppedByEnemies, exclusiveDroppedByEnemies, lootTypeToItemNames, enemyTypeToItemNames);
-    }
-
     private record RouteResult(double score, List<? extends RoutablePoint> path, String extractionPoint, Double extractionLat,
-            Double extractionLng, List<EnemySpawnDto> enemySpawns) {
+                               Double extractionLng, List<EnemySpawnDto> enemySpawns) {
     }
 
     private RouteResult calculateRouteAndScore(
@@ -204,7 +190,8 @@ public class PlannerService {
             List<MapMarker> extractionMarkers,
             List<MapMarker> allTargetEnemiesOnMap, // All enemies for proximity scoring
             GameMap map,
-            Map<String, List<String>> enemyTypeToItemNames) {
+            Map<String, List<String>> enemyTypeToItemNames,
+            TargetItemInfo ingredientInfo) {
 
         // --- MODE 1: PURE SCAVENGER ---
         // Logic: Simple count of matching areas. Distance is irrelevant.
@@ -221,6 +208,18 @@ public class PlannerService {
             if (point instanceof Area area) {
                 long matchCount = area.getLootTypes().stream().filter(lt -> targets.contains(lt.getName())).count();
                 score = (matchCount > 1) ? (matchCount * 100) : 10;
+
+                // Recipe Ingredient Bonus: Boost areas containing recipe ingredients
+                if (ingredientInfo != null) {
+                    for (LootType areaLootType : area.getLootTypes()) {
+                        if (ingredientInfo.lootTypeToItemNames().containsKey(areaLootType.getName())) {
+                            // For each loot type that has ingredients, add bonus * count of ingredients in that loot type
+                            // This approximates the original logic of iterating all ingredients and checking if they are in the area
+                            List<String> ingredientsInLootType = ingredientInfo.lootTypeToItemNames().get(areaLootType.getName());
+                            score += ingredientsInLootType.size() * 50.0;
+                        }
+                    }
+                }
 
                 // PvP Mode Adjustment: Boost areas near map edge (distance from 0,0)
                 if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP
@@ -258,7 +257,7 @@ public class PlannerService {
                 if (!allMapAreas.isEmpty()) {
                     Area referenceArea = allMapAreas.iterator().next(); // Use an actual Area as reference
                     MapMarker nearestExtraction = extractionMarkers.stream()
-                            .min(Comparator.comparingDouble(m -> distance(referenceArea, m)))
+                            .min(Comparator.comparingDouble(m -> geometryService.distance(referenceArea, m)))
                             .orElse(null);
                     if (nearestExtraction != null) {
                         bestExit = (nearestExtraction.getName() != null && !nearestExtraction.getName().isBlank())
@@ -292,7 +291,7 @@ public class PlannerService {
                 if (current instanceof Area areaCurrent && next instanceof Area areaNext) {
                     if (profile == PlannerRequestDto.RoutingProfile.AVOID_PVP
                             || profile == PlannerRequestDto.RoutingProfile.SAFE_EXFIL) {
-                        if (isRouteDangerous(areaCurrent, areaNext, dangerZones)) {
+                        if (geometryService.isRouteDangerous(areaCurrent, areaNext, dangerZones)) {
                             totalScore -= 200; // Heavy penalty for crossing a High Tier zone
                         }
                     }
@@ -312,11 +311,11 @@ public class PlannerService {
         } else {
             RoutablePoint finalRoutablePoint = path.get(path.size() - 1); // Last point for exfil calculation
             MapMarker nearestExtraction = extractionMarkers.stream()
-                    .min(Comparator.comparingDouble(m -> distance(finalRoutablePoint, m)))
+                    .min(Comparator.comparingDouble(m -> geometryService.distance(finalRoutablePoint, m)))
                     .orElse(null);
 
             if (nearestExtraction != null) {
-                double distToExit = distance(finalRoutablePoint, nearestExtraction);
+                double distToExit = geometryService.distance(finalRoutablePoint, nearestExtraction);
 
                 // Apply distance-based scoring bonus for extraction proximity
                 if (profile == PlannerRequestDto.RoutingProfile.EASY_EXFIL
@@ -393,7 +392,7 @@ public class PlannerService {
         while (!unvisited.isEmpty()) {
             final RoutablePoint from = current;
             RoutablePoint nearest = unvisited.stream()
-                    .min(Comparator.comparingDouble(a -> distance(from, a)))
+                    .min(Comparator.comparingDouble(a -> geometryService.distance(from, a)))
                     .orElseThrow();
 
             route.add(nearest);
@@ -410,7 +409,7 @@ public class PlannerService {
     private double calculateTotalDistance(List<? extends RoutablePoint> route) {
         double total = 0;
         for (int i = 0; i < route.size() - 1; i++) {
-            total += distance(route.get(i), route.get(i + 1));
+            total += geometryService.distance(route.get(i), route.get(i + 1));
         }
         return total;
     }
@@ -434,15 +433,15 @@ public class PlannerService {
             for (int i = 0; i < improved.size() - 2; i++) {
                 for (int j = i + 2; j < improved.size(); j++) {
                     // Calculate current distance: i→(i+1) and j→(j+1)
-                    double currentDist = distance(improved.get(i), improved.get(i + 1));
+                    double currentDist = geometryService.distance(improved.get(i), improved.get(i + 1));
                     if (j < improved.size() - 1) {
-                        currentDist += distance(improved.get(j), improved.get(j + 1));
+                        currentDist += geometryService.distance(improved.get(j), improved.get(j + 1));
                     }
 
                     // Calculate swapped distance: i→j and (i+1)→(j+1)
-                    double swappedDist = distance(improved.get(i), improved.get(j));
+                    double swappedDist = geometryService.distance(improved.get(i), improved.get(j));
                     if (j < improved.size() - 1) {
-                        swappedDist += distance(improved.get(i + 1), improved.get(j + 1));
+                        swappedDist += geometryService.distance(improved.get(i + 1), improved.get(j + 1));
                     }
 
                     // If swap reduces distance, reverse the segment
@@ -469,111 +468,6 @@ public class PlannerService {
         return improved;
     }
 
-    // --- HELPERS ---
-
-    /**
-     * Calculates the Euclidean distance between two RoutablePoints.
-     */
-    private double distance(RoutablePoint p1, RoutablePoint p2) {
-        return Math.sqrt(Math.pow(p1.getX() - p2.getX(), 2) + Math.pow(p1.getY() - p2.getY(), 2));
-    }
-
-    /**
-     * Calculates the minimum distance from an enemy marker to the route path.
-     * WHY: Enemy proximity should be measured to the actual path segments, not just
-     * area centroids
-     *
-     * @param enemy Enemy spawn marker
-     * @param path  Route path (list of RoutablePoints)
-     * @return Minimum distance from enemy to any point on the route path
-     */
-    private double distanceToRoutePath(MapMarker enemy, List<? extends RoutablePoint> path) {
-        if (path.isEmpty()) {
-            return Double.MAX_VALUE;
-        }
-
-        // If only one point, use point-to-point distance
-        if (path.size() == 1) {
-            return distance(path.get(0), enemy);
-        }
-
-        // Calculate minimum distance to all route segments
-        double minDistance = Double.MAX_VALUE;
-        for (int i = 0; i < path.size() - 1; i++) {
-            RoutablePoint start = path.get(i);
-            RoutablePoint end = path.get(i + 1);
-
-            double segmentDist = pointToSegmentDistance(
-                    enemy.getX(), enemy.getY(), // Point (enemy position)
-                    start.getX(), start.getY(), // Segment start
-                    end.getX(), end.getY() // Segment end
-            );
-
-            minDistance = Math.min(minDistance, segmentDist);
-        }
-
-        return minDistance;
-    }
-
-    // Check if the line between two areas intersects any High Tier Zone
-    private boolean isRouteDangerous(Area start, Area end, List<Area> dangerZones) {
-        for (Area danger : dangerZones) {
-            if (danger.getId().equals(start.getId()) || danger.getId().equals(end.getId()))
-                continue;
-
-            double dangerRadius = calculateDynamicRadius(danger);
-            double distToHazard = pointToSegmentDistance(
-                    danger.getX(), danger.getY(),
-                    start.getX(), start.getY(),
-                    end.getX(), end.getY());
-
-            if (distToHazard < dangerRadius)
-                return true;
-        }
-        return false;
-    }
-
-    // Dynamic Radius Calculation based on Polygon Area
-    private double calculateDynamicRadius(Area area) {
-        try {
-            // Parse JSON: [[x,y], [x,y], ...]
-            List<List<Double>> coords = objectMapper.readValue(area.getCoordinates(), new TypeReference<>() {
-            });
-            if (coords.isEmpty())
-                return 50.0;
-
-            // Find max distance from center to any vertex
-            double maxDist = 0;
-            for (List<Double> point : coords) {
-                // Based on V4: '[[462,-438]...]' -> Looks like [x, y]
-                double px = point.get(0);
-                double py = point.get(1);
-
-                double d = Math.sqrt(Math.pow(area.getX() - px, 2) + Math.pow(area.getY() - py, 2));
-                if (d > maxDist)
-                    maxDist = d;
-            }
-            return maxDist; // Safe buffer radius
-        } catch (IOException e) {
-            return 100.0; // Fallback default
-        }
-    }
-
-    // Math helper: Distance from Point P(px,py) to Line Segment AB
-    private double pointToSegmentDistance(double px, double py, double ax, double ay, double bx, double by) {
-        double l2 = Math.pow(bx - ax, 2) + Math.pow(by - ay, 2);
-        if (l2 == 0)
-            return Math.sqrt(Math.pow(px - ax, 2) + Math.pow(py - ay, 2));
-
-        double t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
-        t = Math.max(0, Math.min(1, t));
-
-        double projX = ax + t * (bx - ax);
-        double projY = ay + t * (by - ay);
-
-        return Math.sqrt(Math.pow(px - projX, 2) + Math.pow(py - projY, 2));
-    }
-
     /**
      * Scores how well a route passes near target enemy spawn points.
      * WHY: Routes that naturally pass enemies are more efficient for combined
@@ -589,7 +483,7 @@ public class PlannerService {
 
         for (MapMarker enemy : enemies) {
             // Calculate minimum distance to route path segments
-            double minDist = distanceToRoutePath(enemy, path);
+            double minDist = geometryService.distanceToRoutePath(enemy, path);
 
             // Within proximity threshold = full points, drops off linearly
             if (minDist < PROXIMITY_THRESHOLD) {
@@ -622,7 +516,7 @@ public class PlannerService {
 
                     if (!path.isEmpty()) {
                         // Calculate minimum distance from this spawn to the route path segments
-                        distanceToRoute = distanceToRoutePath(enemy, path);
+                        distanceToRoute = geometryService.distanceToRoutePath(enemy, path);
 
                         onRoute = distanceToRoute < PROXIMITY_THRESHOLD;
                     }
@@ -653,6 +547,8 @@ public class PlannerService {
         String type;
         Set<String> lootTypes = Collections.emptySet();
         Integer lootAbundance = null;
+        String containerType = null;
+        Integer markerCount = null;
         List<String> ongoingMatchItems = Collections.emptyList();
         List<String> targetMatchItems = new ArrayList<>();
 
@@ -683,6 +579,10 @@ public class PlannerService {
                 }
             }
 
+        } else if (point instanceof MarkerGroup group) {
+            type = "MARKER_GROUP";
+            containerType = group.getContainerType().getName();
+            markerCount = group.getMarkerCount();
         } else if (point instanceof MapMarker marker) {
             type = "MARKER";
             // Populate targetMatchItems for markers (enemies)
@@ -703,25 +603,10 @@ public class PlannerService {
                 type,
                 lootTypes,
                 lootAbundance,
+                containerType,
+                markerCount,
                 ongoingMatchItems,
                 targetMatchItems.stream().distinct().sorted().toList()
         );
     }
-
-    private Map<String, List<String>> resolveOngoingItems(List<String> itemNames) {
-        if (itemNames == null || itemNames.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        Map<String, List<String>> map = new HashMap<>();
-        for (String name : itemNames) {
-            itemRepository.findByName(name)
-                    .ifPresent(item -> {
-                        if (item.getLootType() != null) {
-                            map.computeIfAbsent(item.getLootType().getName(), k -> new ArrayList<>()).add(name);
-                        }
-                    });
-        }
-        return map;
-    }
-
 }

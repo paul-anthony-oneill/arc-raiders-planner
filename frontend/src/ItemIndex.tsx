@@ -1,134 +1,96 @@
-import React, { useState, useEffect } from "react";
-import type { Item } from "./types";
+import React from 'react'
+import { CatalogIndex } from './components/CatalogIndex'
+import type { Item } from './types'
+import { getRarityColors } from './utils/rarityColors'
 
-const API_BASE_URL = "/api/items";
 interface ItemIndexProps {
-  onItemSelected: (item: Item) => void;
+    onItemSelected: (item: Item) => void
 }
 
+/**
+ * Item search and selection interface.
+ * WHY: Updated to Grid View and filtered logic for Planner 2.0
+ */
 const ItemIndex: React.FC<ItemIndexProps> = ({ onItemSelected }) => {
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
+    return (
+        <CatalogIndex<Item>
+            apiUrl="/api/items"
+            title="ARC Raiders Item Index"
+            className="w-full"
+            onSelect={onItemSelected}
+            getItemKey={(item) => item.id}
+            searchPlaceholder="Search items (e.g., circuit, gear)..."
+            filterItems={(items) => items.filter((item) => {
+                // Must have a loot type to be lootable
+                if (item.lootType === null) return false;
+                
+                // Exclude Blueprints (random spawn, not targetable)
+                if (item.itemType === 'Blueprint') return false;
+                
+                // Exclude High Tier items (II, III, IV, V) - Only target base items
+                // Regex matches Roman numerals at the end of the name
+                if (/\s(II|III|IV|V)$/.test(item.name)) return false;
+                
+                return true;
+            })}
+            renderItem={(item) => {
+                const rarityColors = getRarityColors(item.rarity)
+                return (
+                    <div 
+                        onClick={() => onItemSelected(item)}
+                        className="
+                            bg-retro-black/50 border border-retro-sand/20 hover:border-retro-orange
+                            p-3 cursor-pointer transition-all hover:bg-retro-orange/5
+                            flex flex-col gap-2 h-full relative group
+                        "
+                    >
+                        {/* Header: Icon + Name */}
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-retro-dark border border-retro-sand/10 flex-shrink-0 flex items-center justify-center">
+                                {item.iconUrl ? (
+                                    <img src={item.iconUrl} alt={item.name} className="w-8 h-8 object-contain" />
+                                ) : (
+                                    <span className="text-retro-sand-dim text-xs">?</span>
+                                )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <strong className="text-retro-sand text-sm font-display tracking-wide block truncate">
+                                    {item.name}
+                                </strong>
+                                <span 
+                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                                    style={{
+                                        background: rarityColors.background,
+                                        color: rarityColors.text,
+                                    }}
+                                >
+                                    {item.rarity}
+                                </span>
+                            </div>
+                        </div>
 
-  const fetchItems = async (search: string = "") => {
-    setLoading(true);
-    setError(null);
+                        {/* Description */}
+                        <div className="text-xs text-retro-sand-dim line-clamp-2 min-h-[2.5em]">
+                            {item.description}
+                        </div>
+                        
+                        {/* Footer: Tags */}
+                        <div className="flex items-center justify-between mt-auto pt-2 border-t border-retro-sand/5">
+                            <span className="text-[10px] text-retro-sand-dim uppercase font-mono">
+                                {item.lootType}
+                            </span>
+                            {item.hasRecipe && (
+                                <span className="text-[10px] text-green-400 font-mono flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                                    CRAFTABLE
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )
+            }}
+        />
+    )
+}
 
-    try {
-      const url = `${API_BASE_URL}${search ? `?search=${search}` : ""}`;
-      const response = await fetch(url);
-      const data: Item[] = await response.json();
-      setItems(data);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setError(
-        `Failed to fetch items. Check console for details. (Error: ${err instanceof Error ? err.message : "Unknown"})`,
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const delaySearch = setTimeout(() => {
-      fetchItems(searchTerm);
-    }, 300);
-
-    return () => clearTimeout(delaySearch);
-  }, [searchTerm]);
-
-  const visibleItems = items.filter((item) => item.lootType !== null);
-
-  const handleKeyDown = (e: React.KeyboardEvent, item: Item) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onItemSelected(item);
-    }
-  };
-
-  return (
-    <div
-      className="item-index-container"
-      style={{ maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif" }}
-    >
-      <h2>ARC Raiders Item Index ({visibleItems.length} Total)</h2>
-      <label htmlFor="item-search" className="sr-only">Search items</label>
-      <input
-        id="item-search"
-        type="text"
-        placeholder="Search items (e.g., circuit, gear)..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "10px",
-          marginBottom: "20px",
-          fontSize: "16px",
-        }}
-      />
-
-      {error && <p style={{ color: "red" }}>Error: {error}</p>}
-
-      {loading && visibleItems.length === 0 && !error && (
-        <p>Loading items from backend...</p>
-      )}
-
-      <div
-        className="item-list"
-        style={{
-          maxHeight: "60vh",
-          overflowY: "auto",
-          border: "1px solid #ccc",
-          padding: "10px",
-        }}
-      >
-        {visibleItems.length > 0
-          ? visibleItems.map((item) => (
-              <div
-                key={item.id}
-                role="button"
-                tabIndex={0}
-                className="item-card cursor-pointer outline-none focus:ring-2 focus:ring-retro-orange"
-                onClick={() => onItemSelected(item)}
-                onKeyDown={(e) => handleKeyDown(e, item)}
-                style={{
-                  border: "1px solid #eee",
-                  padding: "10px",
-                  marginBottom: "10px",
-                  borderRadius: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                <div className="item-icon-container">
-                  {" "}
-                  {}
-                  <img
-                    src={item.iconUrl || "placeholder.webp"}
-                    alt={item.name}
-                  />
-                </div>
-                <div>
-                  <h4>
-                    {item.name} ({item.rarity})
-                  </h4>
-                  <p style={{ margin: 0, fontSize: "14px" }}>
-                    Type: <strong>{item.itemType}</strong> | Loot Zone:
-                    <strong>
-                      {item.lootType
-                        ? item.lootType.name
-                        : " (Crafted/Enemy Drop)"}
-                    </strong>
-                  </p>
-                </div>
-              </div>
-            ))
-          : !loading && <p>No items found matching "{searchTerm}".</p>}
-      </div>
-    </div>
-  );
-};
-
-export default ItemIndex;
+export default ItemIndex

@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { RoutingProfile } from "./types";
-import type { Item, PlannerResponse } from "./types";
+import type { Item, PlannerResponse, ContainerType, PlannerRequest } from "./types";
 import type { MapDataResponse } from "./types/stats";
+import { RecipeSelector } from "./RecipeSelector";
+import { ContainerIndex } from "./ContainerIndex";
 import MapComponent from "./MapComponent";
+
 
 const API_PLANNER_URL = "/api/planner";
 const API_MAP_DATA_URL = "/api/maps";
@@ -28,6 +31,12 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
   // New state for enemy targeting
   const [availableEnemies, setAvailableEnemies] = useState<string[]>([]);
   const [targetEnemies, setTargetEnemies] = useState<string[]>([]);
+
+  // New state for recipe targeting (crafting + workbench upgrades)
+  const [targetRecipes, setTargetRecipes] = useState<string[]>([]);
+
+  // New state for container targeting
+  const [targetContainers, setTargetContainers] = useState<string[]>([]);
 
   // Fetch available enemy types on mount
   useEffect(() => {
@@ -60,9 +69,14 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
       setError(null);
       setMapData(null);
 
-      if (!selectedItem.lootType && targetEnemies.length === 0) {
+      if (
+        !selectedItem.lootType &&
+        targetEnemies.length === 0 &&
+        targetRecipes.length === 0 &&
+        targetContainers.length === 0
+      ) {
         setError(
-          `${selectedItem.name} is only obtained via crafting or enemy drops, and no enemy target is selected.`,
+          `${selectedItem.name} is only obtained via crafting or enemy drops, and no target is selected.`,
         );
         setLoading(false);
         setRecommendations([]);
@@ -71,15 +85,20 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
 
       try {
         // POST to new planner API
+        const requestBody: PlannerRequest = {
+            targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
+            targetEnemyTypes: targetEnemies,
+            targetRecipeIds: targetRecipes as string[], // Explicit cast
+            targetContainerTypes: targetContainers,
+            hasRaiderKey,
+            routingProfile,
+            ongoingItemNames: [],
+        };
+
         const response = await fetch(API_PLANNER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targetItemNames: selectedItem.lootType ? [selectedItem.name] : [],
-            targetEnemyTypes: targetEnemies,
-            hasRaiderKey,
-            routingProfile,
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         const results: PlannerResponse[] = await response.json();
@@ -106,7 +125,24 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
     };
 
     fetchPlannerData();
-  }, [selectedItem, hasRaiderKey, routingProfile, targetEnemies]);
+  }, [
+    selectedItem,
+    hasRaiderKey,
+    routingProfile,
+    targetEnemies,
+    targetRecipes,
+    targetContainers,
+  ]);
+
+  const handleContainerSelect = (container: ContainerType) => {
+    if (targetContainers.includes(container.subcategory)) {
+      setTargetContainers(
+        targetContainers.filter((c) => c !== container.subcategory),
+      );
+    } else {
+      setTargetContainers([...targetContainers, container.subcategory]);
+    }
+  };
 
   // Profile descriptions for help text
   const profileDescriptions: Record<RoutingProfile, string> = {
@@ -141,7 +177,7 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
       <h2>Planning for: {selectedItem.name}</h2>
       <p>
         Required Loot Type:{" "}
-        <strong>{selectedItem.lootType?.name || "N/A"}</strong>
+        <strong>{selectedItem.lootType || "N/A"}</strong>
       </p>
 
       {/* Routing Profile Controls */}
@@ -297,6 +333,20 @@ const Planner: React.FC<PlannerProps> = ({ selectedItem, onBack }) => {
             Select high-value enemies to include in route planning. The route
             will be scored based on proximity to these targets.
           </p>
+        </div>
+
+        <div style={{ marginBottom: "15px" }}>
+          <RecipeSelector
+            selectedRecipeIds={targetRecipes}
+            onSelectionChange={setTargetRecipes}
+          />
+        </div>
+
+        <div style={{ marginBottom: "15px" }}>
+          <ContainerIndex
+            selectedContainers={targetContainers}
+            onSelect={handleContainerSelect}
+          />
         </div>
 
         <div>
